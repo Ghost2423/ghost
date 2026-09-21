@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沧元图 · 沧元界</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#070b16;
+    --ink2:#0d1426;
+    --jade:#2dd4bf;
+    --jade-deep:#0f766e;
+    --crimson:#ef4454;
+    --gold:#e9c46a;
+    --text:#e8eef7;
+    --muted:#9fb0c8;
+    --glass:rgba(14,22,42,.55);
+    --line:rgba(45,212,191,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Noto Serif SC","Songti SC",serif;
+    background:var(--ink);color:var(--text);overflow:hidden;
+  }
+  .wrap{display:flex;height:100vh;width:100%}
+
+  /* ===== 左侧主题视觉 ===== */
+  .visual{
+    position:relative;flex:1.15;
+    background:
+      linear-gradient(180deg,rgba(7,11,22,.10),rgba(7,11,22,.72) 70%,rgba(7,11,22,.96)),
+      url("generated-images/Chinese_ink_wash_fantasy_dongh_2026-09-14T03-41-28.png") center/cover no-repeat;
+    display:flex;flex-direction:column;justify-content:space-between;
+    padding:54px 56px;overflow:hidden;
+  }
+  /* 动漫风：流光粒子 + 速度线 */
+  .visual::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(900px 500px at 30% 18%,rgba(45,212,191,.16),transparent 60%),
+      radial-gradient(700px 520px at 82% 92%,rgba(239,68,84,.14),transparent 60%),
+      repeating-linear-gradient(115deg,rgba(255,255,255,.04) 0 2px,transparent 2px 26px);
+    animation:speed 12s linear infinite;
+  }
+  @keyframes speed{0%{background-position:0 0,0 0,0 0}100%{background-position:0 0,0 0,260px 0}}
+  .embers{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+  .embers i{position:absolute;bottom:-10px;width:4px;height:4px;border-radius:50%;
+    background:var(--jade);box-shadow:0 0 8px var(--jade);opacity:.0;
+    animation:rise linear infinite;}
+  @keyframes rise{
+    0%{transform:translateY(0) scale(1);opacity:0}
+    10%{opacity:.9}
+    90%{opacity:.5}
+    100%{transform:translateY(-105vh) scale(.4);opacity:0}
+  }
+  .brand{display:flex;align-items:center;gap:14px;position:relative;z-index:3}
+  .seal{
+    width:46px;height:46px;border-radius:12px;
+    background:linear-gradient(135deg,var(--crimson),#b91c1c);
+    display:grid;place-items:center;font-weight:900;color:#fff;
+    box-shadow:0 0 26px rgba(239,68,84,.6);font-size:22px;
+    animation:sealPulse 3s ease-in-out infinite;
+  }
+  @keyframes sealPulse{50%{box-shadow:0 0 40px rgba(239,68,84,.9)}}
+  .brand b{font-size:20px;letter-spacing:4px;font-weight:900}
+  .brand span{font-size:12px;color:var(--muted);letter-spacing:2px;display:block;margin-top:2px}
+
+  .hero{position:relative;z-index:3;max-width:540px}
+  .hero h1{
+    font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;
+    font-size:96px;line-height:.98;letter-spacing:12px;
+    background:linear-gradient(90deg,var(--jade),#fff,var(--gold),var(--jade));
+    background-size:220% auto;
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 28px rgba(45,212,191,.45));
+    animation:shine 5s linear infinite;
+  }
+  @keyframes shine{to{background-position:220% center}}
+  .hero .line{height:3px;width:170px;margin:22px 0;
+    background:linear-gradient(90deg,var(--jade),var(--gold),transparent);
+    box-shadow:0 0 16px var(--jade);position:relative}
+  .hero .line::after{content:"";position:absolute;right:-3px;top:-4px;width:11px;height:11px;
+    border-radius:50%;background:var(--gold);box-shadow:0 0 18px var(--gold);
+    animation:slash 2.4s infinite ease-in-out}
+  @keyframes slash{0%,100%{transform:translateX(0);opacity:.5}50%{transform:translateX(10px);opacity:1}}
+  .hero p{color:#c7d4e8;font-size:17px;line-height:2.1;letter-spacing:1px;
+    text-shadow:0 2px 14px rgba(0,0,0,.6)}
+  .tags{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
+  .tag{font-size:13px;padding:7px 14px;border:1px solid var(--line);border-radius:999px;
+    color:var(--jade);background:rgba(45,212,191,.08);letter-spacing:1px;
+    box-shadow:0 0 14px rgba(45,212,191,.12) inset}
+  .foot-note{position:relative;z-index:3;font-size:12px;color:var(--muted);letter-spacing:1px}
+
+  /* ===== 右侧登录区 ===== */
+  .panel{
+    flex:.85;min-width:420px;display:grid;place-items:center;
+    background:
+      radial-gradient(620px 620px at 120% -10%,rgba(45,212,191,.12),transparent 55%),
+      linear-gradient(180deg,var(--ink2),var(--ink));
+    padding:36px;position:relative;overflow:hidden;
+  }
+  /* 动漫风：旋转灵气光环 */
+  .panel::after{content:"";position:absolute;width:560px;height:560px;border-radius:50%;
+    background:conic-gradient(from 0deg,transparent,rgba(45,212,191,.18),transparent 32%,rgba(239,68,84,.16),transparent 64%);
+    filter:blur(46px);animation:spin 16s linear infinite;z-index:0;opacity:.8}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .panel::before{content:"";position:absolute;left:0;top:18%;bottom:18%;width:1px;
+    background:linear-gradient(180deg,transparent,var(--line),transparent);z-index:1}
+
+  .card{
+    width:100%;max-width:390px;background:var(--glass);
+    border:1px solid rgba(255,255,255,.10);border-radius:22px;
+    padding:40px 34px;backdrop-filter:blur(16px);position:relative;z-index:2;
+    box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);
+    animation:cardIn .7s ease both;
+  }
+  @keyframes cardIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  /* 动漫风：流光描边 */
+  .card::before{content:"";position:absolute;inset:-1px;border-radius:23px;padding:1.5px;
+    background:linear-gradient(130deg,var(--jade),transparent 42%,var(--crimson));
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7;
+    animation:borderFlow 6s linear infinite;background-size:200% 200%}
+  @keyframes borderFlow{to{background-position:200% 0}}
+
+  .card .ttl{font-size:30px;font-weight:900;letter-spacing:8px;text-align:center;
+    background:linear-gradient(90deg,var(--jade),#fff,var(--gold),var(--jade));
+    background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:shine 5s linear infinite}
+  .card .sub{color:var(--muted);font-size:13px;margin-top:8px;letter-spacing:1px;text-align:center}
+  .divider{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:24px 0}
+
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;letter-spacing:1px}
+  .control{position:relative}
+  .control input{
+    width:100%;padding:13px 42px 13px 14px;font-size:15px;
+    background:rgba(7,11,22,.6);border:1px solid rgba(255,255,255,.12);
+    border-radius:11px;color:var(--text);outline:none;transition:.2s;font-family:inherit;
+  }
+  .control input:focus{border-color:var(--jade);box-shadow:0 0 0 3px rgba(45,212,191,.18),0 0 18px rgba(45,212,191,.25)}
+  .control .ico{position:absolute;right:13px;top:50%;transform:translateY(-50%);
+    color:var(--muted);cursor:pointer;user-select:none;font-size:14px}
+
+  .row{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 22px;font-size:13px}
+  .row label{display:flex;align-items:center;gap:8px;color:var(--muted);cursor:pointer}
+  .row input{accent-color:var(--jade);width:15px;height:15px}
+  .row a{color:var(--jade);text-decoration:none}
+  .row a:hover{text-decoration:underline}
+  .switch{text-align:center;margin-top:18px;font-size:13px;color:var(--muted);letter-spacing:1px}
+  .switch a{color:var(--jade);text-decoration:none;margin-left:4px}
+  .switch a:hover{text-decoration:underline}
+
+  .btn{
+    width:100%;padding:13px;border:none;border-radius:11px;cursor:pointer;
+    font-size:16px;font-weight:700;letter-spacing:6px;font-family:inherit;
+    color:#04130f;background:linear-gradient(135deg,var(--jade),#5eead4);
+    box-shadow:0 12px 30px rgba(45,212,191,.4);transition:.18s;position:relative;overflow:hidden;
+  }
+  .btn::after{content:"";position:absolute;top:0;left:-60%;width:50%;height:100%;
+    background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent);
+    transform:skewX(-20deg);animation:sword 3s ease-in-out infinite}
+  @keyframes sword{0%{left:-60%}55%,100%{left:140%}}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 16px 44px rgba(45,212,191,.55)}
+  .btn:active{transform:translateY(0)}
+
+  /* 觉醒态：天尊·孟川 */
+  .awaken{display:none;text-align:center;animation:pop .55s ease both}
+  .awaken.show{display:block}
+  @keyframes pop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+  .awaken .halo{width:120px;height:120px;margin:6px auto 14px;border-radius:50%;
+    background:radial-gradient(circle,rgba(233,196,106,.35),transparent 70%);
+    display:grid;place-items:center;font-size:46px;
+    box-shadow:0 0 50px rgba(233,196,106,.5);animation:halo 2.6s ease-in-out infinite}
+  @keyframes halo{50%{box-shadow:0 0 70px rgba(233,196,106,.8)}}
+  .awaken .name{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:46px;letter-spacing:8px;
+    background:linear-gradient(180deg,#fff,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 26px rgba(233,196,106,.55))}
+  .awaken .desc{color:var(--jade);margin-top:10px;letter-spacing:3px;font-size:14px}
+  .awaken .reset{margin-top:22px;background:none;border:1px solid var(--line);color:var(--muted);
+    padding:9px 18px;border-radius:999px;cursor:pointer;font-family:inherit;letter-spacing:2px;transition:.18s}
+  .awaken .reset:hover{color:var(--jade);border-color:var(--jade)}
+
+  .toast{position:fixed;left:50%;top:30px;transform:translateX(-50%) translateY(-20px);
+    background:linear-gradient(135deg,var(--jade-deep),var(--jade));
+    color:#04130f;padding:12px 22px;border-radius:12px;font-weight:700;
+    letter-spacing:1px;opacity:0;pointer-events:none;transition:.3s;z-index:60;
+    box-shadow:0 14px 40px rgba(45,212,191,.45)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:880px){
+    .visual{display:none}
+    .panel{flex:1;min-width:0}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- 左侧视觉 -->
+    <section class="visual">
+      <div class="embers" id="embers"></div>
+      <div class="brand">
+        <div class="seal">沧</div>
+        <div><b>沧元图</b><span>CANG YUAN TU · 元界</span></div>
+      </div>
+      <div class="hero">
+        <h1>沧元图</h1>
+        <div class="line"></div>
+        <p>元界动荡，妖魔横行。<br>执剑入元图，护一城烟火。<br>觉醒你的神尊，开启斩妖征途。</p>
+        <div class="tags">
+          <span class="tag">水墨仙侠</span>
+          <span class="tag">剑气除妖</span>
+          <span class="tag">孟川 · 柳七月</span>
+          <span class="tag">腾讯视频国漫</span>
+        </div>
+      </div>
+      <div class="foot-note">© 沧元图主题登录演示 · 仅作展示用途，非官方站点</div>
+    </section>
+
+    <!-- 右侧登录 -->
+    <section class="panel">
+      <form class="card" id="loginForm" autocomplete="off">
+        <div class="ttl">沧元界</div>
+        <div class="sub">刀斩妖邪，笔绘众生 — 请觉醒你的神尊</div>
+        <div class="divider"></div>
+
+        <!-- 登录表单主体 -->
+        <div id="formBody">
+          <div class="field">
+            <label for="acc">神尊相 / 邮箱</label>
+            <div class="control">
+              <input id="acc" type="text" placeholder="请输入神尊相或邮箱" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="pwd">召唤语</label>
+            <div class="control">
+              <input id="pwd" type="password" placeholder="请输入召唤语" />
+              <span class="ico" id="toggle" title="显示/隐藏">👁</span>
+            </div>
+          </div>
+
+          <div class="row">
+            <label><input type="checkbox" id="remember" /> 记住此身</label>
+            <a href="#" id="forget">遗忘召唤语？</a>
+          </div>
+
+          <button class="btn" type="submit">觉 醒</button>
+
+          <div class="switch">尚无根基？<a href="register.html">前往锻造神尊根基 ›</a></div>
+        </div>
+
+        <!-- 觉醒态 -->
+        <div class="awaken" id="awaken">
+          <div class="halo">⚡</div>
+          <div class="name">天尊·孟川</div>
+          <div class="desc">雷霆加护 · 万物臣服</div>
+          <button class="reset" type="button" id="resetBtn">重新封印</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const SP_ACC = "九天应元雷声普化天尊";
+  const SP_PWD = "诸般雷霆，遵吾号令";
+  const COMMON_PWD = "煌煌威灵，遵吾赦令";
+
+  const toast = (msg) => {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2200);
+  };
+
+  // 流光粒子
+  (function(){
+    const box = $("#embers");
+    const colors = ["#2dd4bf","#e9c46a","#ef4454","#5eead4","#ffffff"];
+    for(let i=0;i<26;i++){
+      const e=document.createElement("i");
+      e.style.left=Math.random()*100+"%";
+      e.style.background=colors[i%colors.length];
+      e.style.boxShadow="0 0 8px "+colors[i%colors.length];
+      e.style.animationDuration=(7+Math.random()*8)+"s";
+      e.style.animationDelay=(-Math.random()*10)+"s";
+      const s=2+Math.random()*3; e.style.width=s+"px"; e.style.height=s+"px";
+      box.appendChild(e);
+    }
+  })();
+
+  // 显示/隐藏召唤语
+  $("#toggle").addEventListener("click", () => {
+    const p = $("#pwd");
+    p.type = p.type === "password" ? "text" : "password";
+  });
+
+  // 觉醒（登录）
+  $("#loginForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const acc = $("#acc").value.trim();
+    const pwd = $("#pwd").value;
+
+    // 专享神尊相：九天应元雷声普化天尊
+    if (acc === SP_ACC){
+      if (pwd === SP_PWD){
+        $("#formBody").style.display = "none";
+        $("#awaken").classList.add("show");
+        toast("天尊降世 · 孟川觉醒");
+      } else {
+        toast("召唤语不符，天尊未应");
+      }
+      return;
+    }
+
+    if (!acc) return toast("请输入神尊相");
+    if (pwd !== COMMON_PWD) return toast("召唤语须为：煌煌威灵，遵吾赦令");
+    toast("觉醒成功，正在进入沧元界…");
+  });
+
+  // 遗忘召唤语
+  $("#forget").addEventListener("click", (e) => {
+    e.preventDefault(); toast("召唤语找回链接已发送至绑定邮箱");
+  });
+
+  // 重新封印（回到登录）
+  $("#resetBtn").addEventListener("click", () => {
+    $("#awaken").classList.remove("show");
+    $("#formBody").style.display = "block";
+    $("#acc").value=""; $("#pwd").value="";
+  });
+</script>
+</body>
+</html>
