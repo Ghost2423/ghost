@@ -1,0 +1,44 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.5)
+
+2026-10-14 10:04:53  INFO c.fenglin.springboottest.SpringBootTestApplication.logStarting 53:Starting SpringBootTestApplication v0.0.1-SNAPSHOT using Java 21.0.10 with PID 3736 (C:\Users\Administrator\Desktop\ghost-main\springBootTest\target\springBootTest-0.0.1-SNAPSHOT.jar started by Administrator in C:\Users\Administrator\Desktop\ghost-main\springBootTest)
+2026-10-14 10:04:53  INFO c.fenglin.springboottest.SpringBootTestApplication.logStartupProfileInfo 658:The following 1 profile is active: "dev"
+2026-10-14 10:04:54  INFO o.s.boot.web.embedded.tomcat.TomcatWebServer.initialize 111:Tomcat initialized with port 58052 (http)
+2026-10-14 10:04:54  INFO org.apache.catalina.core.StandardService.log 168:Starting service [Tomcat]
+2026-10-14 10:04:54  INFO org.apache.catalina.core.StandardEngine.log 168:Starting Servlet engine: [Apache Tomcat/10.1.40]
+2026-10-14 10:04:54  INFO o.a.c.core.ContainerBase.[Tomcat].[localhost].[/].log 168:Initializing Spring embedded WebApplicationContext
+2026-10-14 10:04:54  INFO o.s.b.w.s.c.ServletWebServerApplicationContext.prepareWebApplicationContext 301:Root WebApplicationContext: initialization completed in 1609 ms
+Logging initialized using 'class org.apache.ibatis.logging.stdout.StdOutImpl' adapter.
+Get /192.168.137.1 network interface 
+Get network interface info: name:ethernet_32776 (VMware Virtual Ethernet Adapter for VMnet8)
+Initialization Sequence datacenterId:0 workerId:23
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.7 
+2026-10-14 10:04:55  INFO o.s.b.a.web.servlet.WelcomePageHandlerMapping.<init> 59:Adding welcome page: class path resource [static/index.html]
+2026-10-14 10:04:55  WARN o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext.refresh 635:Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-10-14 10:04:55  INFO o.s.b.a.logging.ConditionEvaluationReportLogger.logMessage 82:
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-10-14 10:04:55  ERROR o.s.b.diagnostics.LoggingFailureAnalysisReporter.report 40:
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 58052 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 58052 or configure this application to listen on another port.
+
