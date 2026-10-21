@@ -18,7 +18,7 @@
         <span class="tag">水墨仙侠</span>
         <span class="tag">剑气除妖</span>
         <span class="tag">孟川 · 柳七月</span>
-        <span class="tag">腾讯视频国漫</span>
+        <span class="tag">优酷视频国漫</span>
       </div>
     </div>
 
