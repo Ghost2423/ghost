@@ -248,3 +248,87 @@ JDBC Connection [HikariProxyConnection@1119326992 wrapping com.mysql.cj.jdbc.Con
 ==>  Preparing: SELECT id,category,name,title,description,flavor,created_at FROM cy_codex
 ==> Parameters: 
 Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@30bbe3]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@780297c] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@148039310 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,region,deity_name,myth_name,spell,myth_story,agreed,permission,created_at FROM avatar_foundation WHERE (deity_name = ?)
+==> Parameters: admin(String)
+<==    Columns: id, region, deity_name, myth_name, spell, myth_story, agreed, permission, created_at
+<==        Row: 4, 天枢殿, admin, 元界天帝, admin123, 元界天帝：执掌天枢，统御元界后台。, 1, 0, 2026-10-28 08:58:39
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@780297c]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@36e048a3] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@449360207 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,category,name,title,description,flavor,created_at FROM cy_codex
+==> Parameters: 
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@36e048a3]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@59456c56] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@868668542 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,region,deity_name,myth_name,spell,myth_story,agreed,permission,created_at FROM avatar_foundation WHERE (deity_name = ?)
+==> Parameters: admin(String)
+<==    Columns: id, region, deity_name, myth_name, spell, myth_story, agreed, permission, created_at
+<==        Row: 4, 天枢殿, admin, 元界天帝, admin123, 元界天帝：执掌天枢，统御元界后台。, 1, 0, 2026-10-28 08:58:39
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@59456c56]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31c34725] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1521406841 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,category,name,title,description,flavor,created_at FROM cy_codex
+==> Parameters: 
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31c34725]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@2eab6ac1] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1313644143 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,region,deity_name,myth_name,spell,myth_story,agreed,permission,created_at FROM avatar_foundation WHERE (deity_name = ?)
+==> Parameters: admin(String)
+<==    Columns: id, region, deity_name, myth_name, spell, myth_story, agreed, permission, created_at
+<==        Row: 4, 天枢殿, admin, 元界天帝, admin123, 元界天帝：执掌天枢，统御元界后台。, 1, 0, 2026-10-28 08:58:39
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@2eab6ac1]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@fdcde31] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@55070883 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,region,deity_name,myth_name,spell,myth_story,agreed,permission,created_at FROM avatar_foundation WHERE (deity_name = ?)
+==> Parameters: admin(String)
+<==    Columns: id, region, deity_name, myth_name, spell, myth_story, agreed, permission, created_at
+<==        Row: 4, 天枢殿, admin, 元界天帝, admin123, 元界天帝：执掌天枢，统御元界后台。, 1, 0, 2026-10-28 08:58:39
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@fdcde31]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@8264bb8] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1633821147 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,region,deity_name,myth_name,spell,myth_story,agreed,permission,created_at FROM avatar_foundation
+==> Parameters: 
+<==    Columns: id, region, deity_name, myth_name, spell, myth_story, agreed, permission, created_at
+<==        Row: 1, 东宁府, 九天应元雷声普化天尊, 孟川, 诸般雷霆，遵吾号令, 沧元图主角孟川觉醒之神尊相，雷霆加护，万物臣服。, 1, 1, 2026-10-28 08:50:18
+<==        Row: 2, 幽都山, 烛龙真君, 烛龙, 烛龙衔烛，昼夜由心, 衔烛而照幽都，睁眼为昼，闭眼为夜。, 1, 1, 2026-10-28 08:50:18
+<==        Row: 3, 昆仑山, 西王母元君, 西王母, 西王母临，瑶池生辉, 昆仑之主，瑶池生辉，掌不死之药。, 1, 1, 2026-10-28 08:50:18
+<==        Row: 4, 天枢殿, admin, 元界天帝, admin123, 元界天帝：执掌天枢，统御元界后台。, 1, 0, 2026-10-28 08:58:39
+<==      Total: 4
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@8264bb8]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6350f5c3] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@492999046 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,region,deity_name,myth_name,spell,myth_story,agreed,permission,created_at FROM avatar_foundation WHERE (deity_name = ?)
+==> Parameters: 烛龙真君(String)
+<==    Columns: id, region, deity_name, myth_name, spell, myth_story, agreed, permission, created_at
+<==        Row: 2, 幽都山, 烛龙真君, 烛龙, 烛龙衔烛，昼夜由心, 衔烛而照幽都，睁眼为昼，闭眼为夜。, 1, 1, 2026-10-28 08:50:18
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6350f5c3]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@512e8606] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@897176551 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,category,name,title,description,flavor,created_at FROM cy_codex
+==> Parameters: 
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@512e8606]
+Creating a new SqlSession
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@41dff2e5] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@2067253531 wrapping com.mysql.cj.jdbc.ConnectionImpl@7307204a] will not be managed by Spring
+==>  Preparing: SELECT id,region,deity_name,myth_name,spell,myth_story,agreed,permission,created_at FROM avatar_foundation WHERE (deity_name = ?)
+==> Parameters: admin(String)
+<==    Columns: id, region, deity_name, myth_name, spell, myth_story, agreed, permission, created_at
+<==        Row: 4, 天枢殿, admin, 元界天帝, admin123, 元界天帝：执掌天枢，统御元界后台。, 1, 0, 2026-10-28 08:58:39
+<==      Total: 1
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@41dff2e5]
