@@ -54,6 +54,8 @@ public class AvatarController {
         af.setSpell(spell);
         af.setMythStory(req.getMythStory() == null ? null : req.getMythStory().trim());
         af.setAgreed(req.getAgreed() != null && req.getAgreed() == 1 ? 1 : 0);
+        // 注册用户一律为默认权限（1=默认用户）；管理员权限(0)仅可由后台指定
+        af.setPermission(1);
 
         avatarService.save(af);
         return ResponseEntity.ok(ApiResult.ok("id", af.getId()));

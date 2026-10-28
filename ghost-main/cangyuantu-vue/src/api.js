@@ -54,3 +54,44 @@ export function searchCangyuan(keyword) {
 export function fetchCodex() {
   return request('/api/codex')
 }
+
+/* =============================================================
+ * 后台管理系统 API（仅 permission=0 管理员可用）
+ * cred 为当前管理员凭证 {name, spell}，每个接口均由后端校验
+ * ============================================================= */
+
+/** 管理员登录：POST /api/admin/login {name, spell} -> {ok, admin} */
+export function adminLogin(name, spell) {
+  return request('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, spell })
+  })
+}
+
+/** 用户列表：POST /api/admin/users -> {ok, users:[...]} */
+export function fetchAdminUsers(cred) {
+  return request('/api/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cred)
+  })
+}
+
+/** 变更用户权限：POST /api/admin/permission {name, spell, target_id, permission} */
+export function updatePermission(cred, targetId, permission) {
+  return request('/api/admin/permission', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...cred, target_id: targetId, permission })
+  })
+}
+
+/** 删除用户：POST /api/admin/delete {name, spell, target_id} */
+export function deleteAdminUser(cred, targetId) {
+  return request('/api/admin/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...cred, target_id: targetId })
+  })
+}

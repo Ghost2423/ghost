@@ -1,8 +1,10 @@
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\common\ApiResult.java
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\config\GlobalExceptionHandler.java
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\config\WebConfig.java
+D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\controller\AdminController.java
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\controller\AvatarController.java
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\controller\HomeController.java
+D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\dto\AdminRequest.java
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\dto\ForgeRequest.java
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\dto\LoginRequest.java
 D:\workSpace\ghost\ghost-main\springBootTest\src\main\java\com\fenglin\springboottest\entity\AvatarFoundation.java

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS avatar_foundation (
   spell       VARCHAR(64)    NOT NULL                          COMMENT '召唤语（8–16 字，须含神尊名）',
   myth_story  VARCHAR(255)   DEFAULT NULL                      COMMENT '神话原型简介',
   agreed      TINYINT(1)     NOT NULL DEFAULT 0                COMMENT '是否立下心魔誓约（用户协议）',
+  permission  TINYINT(1)     NOT NULL DEFAULT 1                COMMENT '权限：1=默认用户，0=管理员（管理员可登录后台管理系统）',
   created_at  DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '锻造时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_deity_name (deity_name),   -- 登录按神尊相精确匹配，故唯一
@@ -35,6 +36,16 @@ INSERT IGNORE INTO avatar_foundation (region, deity_name, myth_name, spell, myth
 ('东宁府', '九天应元雷声普化天尊', '孟川',     '诸般雷霆，遵吾号令', '沧元图主角孟川觉醒之神尊相，雷霆加护，万物臣服。', 1),
 ('幽都山', '烛龙真君',             '烛龙',     '烛龙衔烛，昼夜由心', '衔烛而照幽都，睁眼为昼，闭眼为夜。', 1),
 ('昆仑山', '西王母元君',           '西王母',   '西王母临，瑶池生辉', '昆仑之主，瑶池生辉，掌不死之药。', 1);
+
+-- 3.1) 内置管理员账号（permission=0；账号 admin，密码 admin123，明文存储）
+INSERT IGNORE INTO avatar_foundation (region, deity_name, myth_name, spell, myth_story, agreed, permission) VALUES
+('天枢殿', 'admin', '元界天帝', 'admin123', '元界天帝：执掌天枢，统御元界后台。', 1, 0);
+
+-- 3.2) 已有库升级：为旧表补上权限列（全新建库执行 3.1 前的建表语句已含该列，此处仅旧库需要）
+-- ALTER TABLE avatar_foundation
+--   ADD COLUMN permission TINYINT(1) NOT NULL DEFAULT 1 COMMENT '权限：1=默认用户，0=管理员' AFTER agreed;
+-- 将某个已有用户提升为管理员（示例）：
+-- UPDATE avatar_foundation SET permission = 0 WHERE deity_name = '你的账号';
 
 -- 3) 校验
 SELECT COUNT(*) AS 已锻造神尊数 FROM avatar_foundation;

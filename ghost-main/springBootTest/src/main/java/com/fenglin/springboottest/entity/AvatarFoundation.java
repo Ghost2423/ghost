@@ -35,6 +35,9 @@ public class AvatarFoundation {
     /** 是否立下心魔誓约（用户协议） */
     private Integer agreed;
 
+    /** 权限：1=默认用户（注册默认），0=管理员（可登录后台管理系统） */
+    private Integer permission;
+
     /** 锻造时间（数据库默认 CURRENT_TIMESTAMP） */
     private LocalDateTime createdAt;
 
@@ -58,6 +61,9 @@ public class AvatarFoundation {
 
     public Integer getAgreed() { return agreed; }
     public void setAgreed(Integer agreed) { this.agreed = agreed; }
+
+    public Integer getPermission() { return permission; }
+    public void setPermission(Integer permission) { this.permission = permission; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

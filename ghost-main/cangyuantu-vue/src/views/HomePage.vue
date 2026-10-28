@@ -39,6 +39,9 @@
             <div class="avatar">{{ avatarInitial }}</div>
             <span class="uname" :title="avatar.deity_name">{{ entryName }}</span>
             <span class="guest-tag" v-if="avatar.isGuest">游客</span>
+            <span class="admin-tag" v-if="isAdmin">管理员</span>
+            <!-- 后台管理系统入口：仅管理员（permission===0）可见 -->
+            <button class="admin-entry" v-if="isAdmin" @click="$emit('open-admin')">⚙ 后台管理</button>
             <button class="logout" @click="$emit('logout')">退位</button>
           </div>
         </div>
@@ -176,7 +179,7 @@ import { ref, computed, onMounted } from 'vue'
 import { searchCangyuan, fetchCodex } from '../api'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
-defineEmits(['logout'])
+defineEmits(['logout', 'open-admin'])
 
 const root = ref(null)
 function scrollTop() { if (root.value) root.value.scrollTo({ top: 0, behavior: 'smooth' }) }
@@ -224,6 +227,12 @@ const entryName = computed(() => {
   return a.myth_name || a.deity_name || '道友'
 })
 const avatarInitial = computed(() => entryName.value.slice(0, 1))
+
+// 是否管理员（permission===0）：仅管理员可见「后台管理系统」入口
+const isAdmin = computed(() => {
+  const a = props.avatar || {}
+  return !a.isGuest && Number(a.permission) === 0
+})
 
 /* ===== 检索 ===== */
 const keyword = ref('')
@@ -485,6 +494,16 @@ function toast(msg) {
   background:none;color:var(--muted);cursor:pointer;font-family:inherit;font-size:12px;
   letter-spacing:2px;transition:.15s}
 .logout:hover{color:var(--crimson);border-color:var(--crimson)}
+
+/* 管理员标识 + 后台管理系统入口（仅管理员渲染） */
+.admin-tag{padding:2px 8px;border-radius:999px;font-size:11px;letter-spacing:1px;
+  color:var(--gold);background:rgba(233,196,106,.12);border:1px solid rgba(233,196,106,.45)}
+.admin-entry{padding:6px 13px;border:1px solid rgba(233,196,106,.5);border-radius:999px;
+  background:linear-gradient(135deg,rgba(233,196,106,.18),rgba(233,196,106,.06));
+  color:var(--gold);cursor:pointer;font-family:inherit;font-size:12px;
+  letter-spacing:2px;transition:.15s;white-space:nowrap}
+.admin-entry:hover{box-shadow:0 0 18px rgba(233,196,106,.4);
+  border-color:var(--gold);transform:translateY(-1px)}
 
 /* ===== 英雄区 ===== */
 .hero{max-width:960px;margin:0 auto;padding:74px 26px 24px;text-align:center;position:relative;z-index:2}
