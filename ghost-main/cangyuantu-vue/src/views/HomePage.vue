@@ -36,7 +36,7 @@
           </div>
 
           <div class="user" v-if="avatar">
-            <div class="avatar">{{ avatarInitial }}</div>
+            <div class="avatar" v-if="showAvatar">{{ avatarInitial }}</div>
             <span class="uname" :title="avatar.deity_name">{{ entryName }}</span>
             <span class="guest-tag" v-if="avatar.isGuest">游客</span>
             <span class="admin-tag" v-if="isAdmin">管理员</span>
@@ -232,6 +232,12 @@ const avatarInitial = computed(() => entryName.value.slice(0, 1))
 const isAdmin = computed(() => {
   const a = props.avatar || {}
   return !a.isGuest && Number(a.permission) === 0
+})
+
+// 仅「九天应元雷声普化天尊」登录时显示头像
+const showAvatar = computed(() => {
+  const a = props.avatar || {}
+  return !a.isGuest && a.deity_name === '九天应元雷声普化天尊'
 })
 
 /* ===== 检索 ===== */

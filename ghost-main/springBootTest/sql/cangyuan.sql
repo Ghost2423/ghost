@@ -37,9 +37,9 @@ INSERT IGNORE INTO avatar_foundation (region, deity_name, myth_name, spell, myth
 ('幽都山', '烛龙真君',             '烛龙',     '烛龙衔烛，昼夜由心', '衔烛而照幽都，睁眼为昼，闭眼为夜。', 1),
 ('昆仑山', '西王母元君',           '西王母',   '西王母临，瑶池生辉', '昆仑之主，瑶池生辉，掌不死之药。', 1);
 
--- 3.1) 内置管理员账号（permission=0；账号 admin，密码 admin123，明文存储）
+-- 3.1) 内置管理员账号（permission=0；账号 沧元祖师，密码 admin123，明文存储）
 INSERT IGNORE INTO avatar_foundation (region, deity_name, myth_name, spell, myth_story, agreed, permission) VALUES
-('天枢殿', 'admin', '元界天帝', 'admin123', '元界天帝：执掌天枢，统御元界后台。', 1, 0);
+('天枢殿', '沧元祖师', '元界天帝', 'admin123', '元界天帝：执掌天枢，统御元界后台。', 1, 0);
 
 -- 3.2) 已有库升级：为旧表补上权限列（全新建库执行 3.1 前的建表语句已含该列，此处仅旧库需要）
 -- ALTER TABLE avatar_foundation

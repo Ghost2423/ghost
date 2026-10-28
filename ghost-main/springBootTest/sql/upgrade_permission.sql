@@ -11,9 +11,9 @@ USE cangyuan;
 ALTER TABLE avatar_foundation
   ADD COLUMN permission TINYINT(1) NOT NULL DEFAULT 1 COMMENT '权限：1=默认用户，0=管理员' AFTER agreed;
 
--- 2) 内置管理员账号（账号 admin，密码 admin123，明文存储，permission=0）
+-- 2) 内置管理员账号（账号 沧元祖师，密码 admin123，明文存储，permission=0）
 INSERT IGNORE INTO avatar_foundation (region, deity_name, myth_name, spell, myth_story, agreed, permission) VALUES
-('天枢殿', 'admin', '元界天帝', 'admin123', '元界天帝：执掌天枢，统御元界后台。', 1, 0);
+('天枢殿', '沧元祖师', '元界天帝', 'admin123', '元界天帝：执掌天枢，统御元界后台。', 1, 0);
 
 -- 3) 如需把某个已有用户提升为管理员，执行（替换 deity_name 为该用户账号）：
 -- UPDATE avatar_foundation SET permission = 0 WHERE deity_name = '你的账号';
