@@ -33,6 +33,12 @@ public class CodexEntry {
     /** 设定台词（flavor） */
     private String flavor;
 
+    /** 功法售价（铜币），仅功法类有效 */
+    private Integer price;
+
+    /** 购得功法获得的神尊力，仅功法类有效 */
+    private Integer powerGain;
+
     /** 录入时间（数据库默认 CURRENT_TIMESTAMP） */
     private LocalDateTime createdAt;
 
@@ -53,6 +59,12 @@ public class CodexEntry {
 
     public String getFlavor() { return flavor; }
     public void setFlavor(String flavor) { this.flavor = flavor; }
+
+    public Integer getPrice() { return price; }
+    public void setPrice(Integer price) { this.price = price; }
+
+    public Integer getPowerGain() { return powerGain; }
+    public void setPowerGain(Integer powerGain) { this.powerGain = powerGain; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

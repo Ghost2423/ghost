@@ -13,6 +13,14 @@
       :avatar="avatar"
       @logout="onLogout"
       @open-admin="openAdmin"
+      @open-cultivation="openCultivation"
+    />
+
+    <!-- 修炼殿（修炼系统：境界/神尊力/秘境/切磋/功法阁） -->
+    <CultivationPanel
+      v-else-if="view === 'cultivation'"
+      :avatar="avatar"
+      @go-home="backToHome"
     />
 
     <!-- 后台管理系统 · 管理员登录（仅权限 permission=0 可登录成功） -->
@@ -41,11 +49,12 @@ import RegisterPanel from './components/RegisterPanel.vue'
 import AdminLogin from './components/AdminLogin.vue'
 import HomePage from './views/HomePage.vue'
 import AdminPanel from './views/AdminPanel.vue'
+import CultivationPanel from './views/CultivationPanel.vue'
 
 // 登录 / 注册 双视图切换
 const mode = ref('login')
 
-// 视图：'auth' 登录注册 | 'home' 首页 | 'admin-login' 后台登录 | 'admin' 后台管理
+// 视图：'auth' 登录注册 | 'home' 首页 | 'cultivation' 修炼殿 | 'admin-login' 后台登录 | 'admin' 后台管理
 const view = ref('auth')
 // 当前神尊根基（来自后端 MySQL）
 const avatar = ref(null)
@@ -71,6 +80,11 @@ function onLogout() {
 function openAdmin() {
   adminBackName.value = (avatar.value && avatar.value.deity_name) || ''
   view.value = 'admin-login'
+}
+
+// 首页「修炼」菜单 → 进入修炼殿（游客已被首页拦截，不会到达此处）
+function openCultivation() {
+  view.value = 'cultivation'
 }
 
 // 管理员登录成功 → 进入后台管理面板

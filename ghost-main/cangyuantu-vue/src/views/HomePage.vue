@@ -179,7 +179,7 @@ import { ref, computed, onMounted } from 'vue'
 import { searchCangyuan, fetchCodex } from '../api'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
-defineEmits(['logout', 'open-admin'])
+const emit = defineEmits(['logout', 'open-admin', 'open-cultivation'])
 
 const root = ref(null)
 function scrollTop() { if (root.value) root.value.scrollTo({ top: 0, behavior: 'smooth' }) }
@@ -204,6 +204,7 @@ const embers = Array.from({ length: 24 }, () => {
 const activeMenu = ref('home')
 const menus = [
   { key: 'home', label: '首页' },
+  { key: 'cultivation', label: '修炼' },
   { key: 'deity', label: '神尊殿', type: '神尊' },
   { key: 'gongfa', label: '修炼功法', type: '功法' },
   { key: 'demon', label: '妖魔图鉴', type: '妖魔' },
@@ -213,6 +214,13 @@ const menus = [
 function onMenu(m) {
   if (m.key === 'home') { clearSearch(); activeMenu.value = 'home'; scrollTop(); return }
   if (m.key === 'forum') { toast('论道论坛尚在开辟中，敬请期待'); return }
+  if (m.key === 'cultivation') {
+    // 修炼殿需要神尊根基（数据库记录）；游客无根基，先行拦截
+    const a = props.avatar || {}
+    if (a.isGuest) { toast('游客无修炼根基，请先觉醒神尊'); return }
+    emit('open-cultivation')
+    return
+  }
   activeMenu.value = m.key
   goSection(m.type)
 }

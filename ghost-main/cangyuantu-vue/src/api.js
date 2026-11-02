@@ -95,3 +95,49 @@ export function deleteAdminUser(cred, targetId) {
     body: JSON.stringify({ ...cred, target_id: targetId })
   })
 }
+
+/* =============================================================
+ * 修炼系统 API（神尊力 / 铜币 / 境界突破 / 秘境 / 切磋 / 功法阁）
+ * cred 为当前用户凭证 {name, spell}，写操作均由后端校验
+ * ============================================================= */
+
+/** 修炼状态总览：GET /api/cultivation/status?name=xx -> {ok, cultivation} */
+export function fetchCultivation(name) {
+  return request('/api/cultivation/status?name=' + encodeURIComponent(name))
+}
+
+/** 进入秘境修炼：POST /api/cultivation/secret {name, spell} */
+export function secretTraining(cred) {
+  return request('/api/cultivation/secret', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...cred })
+  })
+}
+
+/** 切磋：POST /api/cultivation/spar {name, spell, target}（双方各得神尊力与铜币） */
+export function sparWith(cred, target) {
+  return request('/api/cultivation/spar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...cred, target })
+  })
+}
+
+/** 购买功法：POST /api/cultivation/buy {name, spell, gongfa} */
+export function buyGongfa(cred, gongfa) {
+  return request('/api/cultivation/buy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...cred, gongfa })
+  })
+}
+
+/** 突破境界：POST /api/cultivation/break {name, spell} */
+export function breakthroughRealm(cred) {
+  return request('/api/cultivation/break', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...cred })
+  })
+}
