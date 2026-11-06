@@ -57,6 +57,7 @@ echo [3/6] 初始化数据库 cangyuan（幂等，可重复执行）...
 if not exist "%MYSQL_BIN%" set "MYSQL_BIN=mysql.exe"
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\cangyuan.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\cultivation.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\admin_home.sql" >nul 2>nul
 if errorlevel 1 (
   echo   [警告] 数据库脚本未执行成功（若库已存在可忽略）
 ) else (
@@ -145,6 +146,8 @@ echo     后端接口 : http://127.0.0.1:8125
 echo     停止服务 : 双击运行 一键停止.bat
 echo.
 echo   测试账号: 九天应元雷声普化天尊 / 诸般雷霆，遵吾号令
+echo   后台入口: 首页导航栏「? 后台管理」→ 后台登录页（仅管理员可登录）
+echo   管理员  : 沧元祖师 / admin123（权限 0）
 echo ============================================================
 echo.
 echo 本窗口可以关闭；后端和前端在各自窗口中运行。

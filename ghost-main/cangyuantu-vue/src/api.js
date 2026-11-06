@@ -8,11 +8,17 @@ async function request(url, options) {
     const res = await fetch(url, options)
     // 非 2xx 也尝试解析 JSON（后端错误同样返回 {ok:false,msg}）
     const text = await res.text()
+    let data
     try {
-      return JSON.parse(text)
+      data = JSON.parse(text)
     } catch (e) {
       return { ok: false, msg: '后端返回异常（HTTP ' + res.status + '）' }
     }
+    // 后台接口 403 = 管理员凭证失效（权限被撤销 / 密码被改）→ 通知控制台退回登录
+    if (res.status === 403 && url.indexOf('/api/admin') === 0) {
+      window.dispatchEvent(new CustomEvent('cy-admin-auth-fail', { detail: data.msg || '管理员权限已失效' }))
+    }
+    return data
   } catch (e) {
     return NET_FAIL
   }
@@ -55,6 +61,11 @@ export function fetchCodex() {
   return request('/api/codex')
 }
 
+/** 首页展示配置（展示框/元界动态/站点文案/热门标签）：GET /api/home/config */
+export function fetchHomeConfig() {
+  return request('/api/home/config')
+}
+
 /* =============================================================
  * 后台管理系统 API（仅 permission=0 管理员可用）
  * cred 为当前管理员凭证 {name, spell}，每个接口均由后端校验
@@ -94,6 +105,103 @@ export function deleteAdminUser(cred, targetId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...cred, target_id: targetId })
   })
+}
+
+/* =============================================================
+ * 后台管理系统 · 首页数据管理 API
+ * 覆盖首页展示的全部内容：图鉴 / 核心界域展示框 / 元界动态 / 站点文案
+ * ============================================================= */
+
+/** 概览统计：POST /api/admin/overview */
+export function fetchAdminOverview(cred) {
+  return request('/api/admin/overview', jsonPost(cred))
+}
+
+/** 操作日志：POST /api/admin/logs */
+export function fetchAdminLogs(cred) {
+  return request('/api/admin/logs', jsonPost(cred))
+}
+
+/**
+ * 图鉴列表（分页）：POST /api/admin/codex/list
+ * @param {object} opts {category, keyword, status, page, pageSize}
+ *   status: null=不限，1=仅上架，0=仅下架
+ * @returns {ok, items, total, page, page_size, pages, counts, counts_all}
+ */
+export function fetchAdminCodex(cred, opts = {}) {
+  const { category = '', keyword = '', status = null, page = 1, pageSize = 20 } = opts
+  // 后端 Jackson 全局 SNAKE_CASE，分页字段需以 page_size 传
+  return request('/api/admin/codex/list',
+    jsonPost({ ...cred, category, keyword, status, page, page_size: pageSize }))
+}
+
+/** 图鉴新增/修改：POST /api/admin/codex/save {name, spell, item} */
+export function saveAdminCodex(cred, item) {
+  return request('/api/admin/codex/save', jsonPost({ ...cred, item }))
+}
+
+/** 图鉴上架/下架：POST /api/admin/codex/status {name, spell, id, status} */
+export function toggleAdminCodex(cred, id, status) {
+  return request('/api/admin/codex/status', jsonPost({ ...cred, id, status }))
+}
+
+/** 图鉴批量上架/下架：POST /api/admin/codex/status/batch {name, spell, ids, status} */
+export function batchAdminCodexStatus(cred, ids, status) {
+  return request('/api/admin/codex/status/batch', jsonPost({ ...cred, ids, status }))
+}
+
+/** 图鉴删除：POST /api/admin/codex/delete {name, spell, id} */
+export function deleteAdminCodex(cred, id) {
+  return request('/api/admin/codex/delete', jsonPost({ ...cred, id }))
+}
+
+/** 核心界域展示框列表：POST /api/admin/section/list */
+export function fetchAdminSections(cred) {
+  return request('/api/admin/section/list', jsonPost(cred))
+}
+
+/** 展示框保存：POST /api/admin/section/save {name, spell, item} */
+export function saveAdminSection(cred, item) {
+  return request('/api/admin/section/save', jsonPost({ ...cred, item }))
+}
+
+/** 展示框删除：POST /api/admin/section/delete */
+export function deleteAdminSection(cred, id) {
+  return request('/api/admin/section/delete', jsonPost({ ...cred, id }))
+}
+
+/** 元界动态列表：POST /api/admin/news/list */
+export function fetchAdminNews(cred) {
+  return request('/api/admin/news/list', jsonPost(cred))
+}
+
+/** 元界动态保存：POST /api/admin/news/save {name, spell, item} */
+export function saveAdminNews(cred, item) {
+  return request('/api/admin/news/save', jsonPost({ ...cred, item }))
+}
+
+/** 元界动态删除：POST /api/admin/news/delete */
+export function deleteAdminNews(cred, id) {
+  return request('/api/admin/news/delete', jsonPost({ ...cred, id }))
+}
+
+/** 站点文案列表：POST /api/admin/setting/list */
+export function fetchAdminSettings(cred) {
+  return request('/api/admin/setting/list', jsonPost(cred))
+}
+
+/** 站点文案保存：POST /api/admin/setting/save {name, spell, settings:{k:v}} */
+export function saveAdminSettings(cred, settings) {
+  return request('/api/admin/setting/save', jsonPost({ ...cred, settings }))
+}
+
+/** 统一 JSON POST 构造 */
+function jsonPost(body) {
+  return {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }
 }
 
 /* =============================================================

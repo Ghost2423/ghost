@@ -10,10 +10,10 @@
       <div class="nav-inner">
         <!-- 品牌 -->
         <div class="brand" @click="goHome">
-          <div class="seal">沧</div>
+          <div class="seal">{{ (siteTitle || '沧元图').slice(0, 1) }}</div>
           <div class="brand-txt">
-            <b>沧元图</b>
-            <span>CANG YUAN TU · 元界</span>
+            <b>{{ siteTitle || '沧元图' }}</b>
+            <span>{{ siteSubtitle || 'CANG YUAN TU · 元界' }}</span>
           </div>
         </div>
 
@@ -24,24 +24,27 @@
              @click="onMenu(m)">{{ m.label }}</a>
         </nav>
 
-        <!-- 右侧：检索 + 用户 -->
+        <!-- 右侧：检索 + 后台入口 + 用户 -->
         <div class="nav-right">
           <div class="nav-search" :class="{ focus: navFocus }">
             <span class="s-ico">⌕</span>
             <input v-model="keyword" type="text" maxlength="40"
-                   placeholder="检索神尊 / 功法 / 妖魔 / 秘境…"
+                   placeholder="检索…"
                    @focus="navFocus = true" @blur="navFocus = false"
                    @keyup.enter="doSearch" />
             <button class="s-btn" @click="doSearch">检索</button>
           </div>
+
+          <!-- 后台管理系统入口：仅管理员（permission=0）可见，默认用户(1)与游客均不渲染 -->
+          <button v-if="isAdmin" class="admin-entry" @click="$emit('open-admin')">
+            <span class="ae-ico">⚙</span> 后台管理
+          </button>
 
           <div class="user" v-if="avatar">
             <div class="avatar" v-if="showAvatar">{{ avatarInitial }}</div>
             <span class="uname" :title="avatar.deity_name">{{ entryName }}</span>
             <span class="guest-tag" v-if="avatar.isGuest">游客</span>
             <span class="admin-tag" v-if="isAdmin">管理员</span>
-            <!-- 后台管理系统入口：仅管理员（permission===0）可见 -->
-            <button class="admin-entry" v-if="isAdmin" @click="$emit('open-admin')">⚙ 后台管理</button>
             <button class="logout" @click="$emit('logout')">退位</button>
           </div>
         </div>
@@ -50,21 +53,21 @@
 
     <!-- ===== 英雄区 + 主检索栏 ===== -->
     <section class="hero">
-      <div class="hero-badge">元界 · 神尊归位</div>
-      <h1 class="hero-title">沧元界 · 检索万物</h1>
-      <p class="hero-sub">刀斩妖邪，笔绘众生。于元界之中，寻你的神尊、功法与秘境。</p>
+      <div class="hero-badge">{{ heroBadge }}</div>
+      <h1 class="hero-title">{{ heroTitle }}</h1>
+      <p class="hero-sub">{{ heroSubtitle }}</p>
 
       <div class="hero-search">
         <span class="hs-ico">⌕</span>
         <input v-model="keyword" type="text" maxlength="40"
-               placeholder="输入神尊名号、功法、妖魔或秘境…"
+               :placeholder="searchPlaceholder"
                @keyup.enter="doSearch" />
         <button class="hs-btn" :disabled="searching" @click="doSearch">
           {{ searching ? '检索中…' : '入元界检索' }}
         </button>
       </div>
 
-      <div class="hot">
+      <div class="hot" v-if="hotTags.length">
         <span class="hot-label">热门：</span>
         <button v-for="t in hotTags" :key="t" class="hot-tag" @click="quickSearch(t)">{{ t }}</button>
       </div>
@@ -151,7 +154,7 @@
     </main>
 
     <footer class="foot">
-      © 沧元图主题演示 · 仅作展示用途，非官方站点 · 首页图鉴与检索已接入后端（/api/codex · /api/search）
+      {{ footerText }}
     </footer>
 
     <!-- 详情弹窗 -->
@@ -176,7 +179,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { searchCangyuan, fetchCodex } from '../api'
+import { searchCangyuan, fetchCodex, fetchHomeConfig } from '../api'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
 const emit = defineEmits(['logout', 'open-admin', 'open-cultivation'])
@@ -259,16 +262,37 @@ const apiResults = ref(null)
 // 后端图鉴数据（首页展示框 + 分类卡片的数据源）；加载失败则回退本地 rawCatalog
 const codexItems = ref(null)
 
+// 后端首页展示配置（展示框 / 元界动态 / 站点文案 / 热门标签），由后台管理系统维护
+const homeConfig = ref(null)
+const settings = computed(() => (homeConfig.value && homeConfig.value.settings) || {})
+
+// 文案（后台可改，未配置时用内置兜底）
+const siteTitle = computed(() => settings.value.site_title || '沧元图')
+const siteSubtitle = computed(() => settings.value.site_subtitle || 'CANG YUAN TU · 元界')
+const heroBadge = computed(() => settings.value.hero_badge || '元界 · 神尊归位')
+const heroTitle = computed(() => settings.value.hero_title || '沧元界 · 检索万物')
+const heroSubtitle = computed(() => settings.value.hero_subtitle
+  || '刀斩妖邪，笔绘众生。于元界之中，寻你的神尊、功法与秘境。')
+const searchPlaceholder = computed(() => settings.value.search_placeholder || '输入神尊名号、功法、妖魔或秘境…')
+const footerText = computed(() => settings.value.footer_text
+  || '© 沧元图主题演示 · 仅作展示用途，非官方站点')
+
 // 数据基座：优先用后端图鉴，否则用本地兜底
 function baseSource() { return codexItems.value || rawCatalog }
 
-// 进入首页即向后端拉取图鉴（首页展示功能后端化）
+// 进入首页即向后端拉取图鉴与展示配置（首页展示功能后端化）
 onMounted(async () => {
   try {
     const d = await fetchCodex()
     if (d && d.ok && Array.isArray(d.items)) codexItems.value = d.items
   } catch (e) {
     codexItems.value = null
+  }
+  try {
+    const c = await fetchHomeConfig()
+    if (c && c.ok) homeConfig.value = c
+  } catch (e) {
+    homeConfig.value = null
   }
 })
 
@@ -296,8 +320,8 @@ function clearSearch() {
   apiResults.value = null
 }
 
-/* ===== 首页展示框：四大核心界域 ===== */
-const showcase = [
+/* ===== 首页展示框：四大核心界域（后台可配置，后端不可用时用内置兜底） ===== */
+const fallbackShowcase = [
   { type: '神尊', title: '神尊殿', icon: '✦', color: '#e9c46a',
     desc: '人族神尊列传，孟川、柳七月、秦五……元界守护者的名号与传说。' },
   { type: '功法', title: '修炼功法', icon: '✧', color: '#2dd4bf',
@@ -307,6 +331,12 @@ const showcase = [
   { type: '秘境', title: '元界秘境', icon: '❖', color: '#5eead4',
     desc: '不周遗墟、元初山、暗星界，藏上古传承的凶险界域。' }
 ]
+
+// 展示框数据：优先取后台配置，取不到用兜底
+const showcase = computed(() => {
+  const list = homeConfig.value && homeConfig.value.sections
+  return (Array.isArray(list) && list.length) ? list : fallbackShowcase
+})
 
 const flashType = ref('')
 function goSection(type) {
@@ -392,13 +422,17 @@ const rawCatalog = [
     flavor: '海纳百川，孕养一方生灵。' }
 ]
 
-// 动态（独立滚动条）
-const newsItems = [
+// 动态（独立滚动条）：优先取后台配置的「元界动态」
+const fallbackNews = [
   { tag: '公告', text: '神尊归位大典 · 新晋神尊觉醒仪式将启', kw: '神尊', color: '#e9c46a' },
   { tag: '预警', text: '妖潮预警 · 东海之滨妖气骤盛', kw: '妖潮', color: '#ef4454' },
   { tag: '活动', text: '不周遗墟开放 · 探秘可得上古传承', kw: '不周遗墟', color: '#5eead4' },
   { tag: '历练', text: '元初山论道 · 同辈天骄切磋在即', kw: '元初山', color: '#2dd4bf' }
 ]
+const newsItems = computed(() => {
+  const list = homeConfig.value && homeConfig.value.news
+  return (Array.isArray(list) && list.length) ? list : fallbackNews
+})
 
 const counts = computed(() => {
   const m = {}
@@ -428,7 +462,11 @@ function onOpen(it) { activeItem.value = it }
 const activeItem = ref(null)
 function closeModal() { activeItem.value = null }
 
-const hotTags = ['孟川', '柳七月', '元神淬体诀', '水墨刀意', '噬魂魔', '不周遗墟']
+const hotTags = computed(() => {
+  const list = homeConfig.value && homeConfig.value.hot_tags
+  if (Array.isArray(list) && list.length) return list
+  return ['孟川', '柳七月', '元神淬体诀', '水墨刀意', '噬魂魔', '不周遗墟']
+})
 
 /* ===== toast ===== */
 const toastMsg = ref('')
@@ -462,7 +500,7 @@ function toast(msg) {
   backdrop-filter:blur(14px);
   border-bottom:1px solid var(--line);
   box-shadow:0 8px 30px rgba(0,0,0,.4)}
-.nav-inner{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:26px;
+.nav-inner{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:14px;
   padding:14px 26px}
 .brand{display:flex;align-items:center;gap:12px;cursor:pointer;flex-shrink:0}
 .seal{width:42px;height:42px;border-radius:11px;
@@ -471,9 +509,9 @@ function toast(msg) {
   box-shadow:0 0 22px rgba(239,68,84,.55);animation:sealPulse 3s ease-in-out infinite}
 @keyframes sealPulse{50%{box-shadow:0 0 36px rgba(239,68,84,.9)}}
 .brand-txt b{font-size:18px;letter-spacing:4px;font-weight:900;display:block}
-.brand-txt span{font-size:11px;color:var(--muted);letter-spacing:2px}
-.menu{display:flex;gap:6px;flex:1;flex-wrap:wrap}
-.menu a{position:relative;padding:8px 14px;font-size:14px;letter-spacing:2px;
+.brand-txt span{font-size:10px;color:var(--muted);letter-spacing:.5px;white-space:nowrap}
+.menu{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.menu a{position:relative;padding:8px 9px;font-size:13.5px;letter-spacing:1px;
   color:var(--muted);cursor:pointer;transition:.18s;border-radius:9px}
 .menu a:hover{color:var(--text);background:rgba(45,212,191,.08)}
 .menu a.active{color:var(--jade);
@@ -482,13 +520,13 @@ function toast(msg) {
   background:linear-gradient(90deg,var(--jade),var(--gold));border-radius:2px;
   box-shadow:0 0 10px var(--jade)}
 
-.nav-right{display:flex;align-items:center;gap:16px;flex-shrink:0}
+.nav-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .nav-search{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;
   background:rgba(7,11,22,.6);border:1px solid rgba(255,255,255,.12);border-radius:999px;
   transition:.2s}
 .nav-search.focus{border-color:var(--jade);box-shadow:0 0 0 3px rgba(45,212,191,.18)}
 .nav-search .s-ico{color:var(--muted);font-size:16px}
-.nav-search input{width:190px;background:none;border:none;outline:none;
+.nav-search input{width:106px;background:none;border:none;outline:none;
   color:var(--text);font-family:inherit;font-size:13px;letter-spacing:.5px}
 .nav-search .s-btn{padding:6px 12px;border:none;border-radius:999px;cursor:pointer;
   font-family:inherit;font-size:12px;letter-spacing:2px;color:#04130f;
@@ -510,12 +548,12 @@ function toast(msg) {
 .logout:hover{color:var(--crimson);border-color:var(--crimson)}
 
 /* 管理员标识 + 后台管理系统入口（仅管理员渲染） */
-.admin-tag{padding:2px 8px;border-radius:999px;font-size:11px;letter-spacing:1px;
+.admin-tag{padding:2px 6px;border-radius:999px;font-size:11px;letter-spacing:0;
   color:var(--gold);background:rgba(233,196,106,.12);border:1px solid rgba(233,196,106,.45)}
-.admin-entry{padding:6px 13px;border:1px solid rgba(233,196,106,.5);border-radius:999px;
+.admin-entry{padding:6px 9px;border:1px solid rgba(233,196,106,.5);border-radius:999px;
   background:linear-gradient(135deg,rgba(233,196,106,.18),rgba(233,196,106,.06));
-  color:var(--gold);cursor:pointer;font-family:inherit;font-size:12px;
-  letter-spacing:2px;transition:.15s;white-space:nowrap}
+  color:var(--gold);cursor:pointer;font-family:inherit;font-size:11.5px;
+  letter-spacing:0;transition:.15s;white-space:nowrap}
 .admin-entry:hover{box-shadow:0 0 18px rgba(233,196,106,.4);
   border-color:var(--gold);transform:translateY(-1px)}
 

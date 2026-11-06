@@ -2,7 +2,7 @@
   <section class="panel admin-panel">
     <form class="card" autocomplete="off" @submit.prevent="onSubmit">
       <div class="ttl">元界天枢</div>
-      <div class="sub">后台管理系统 · 仅限管理员权限（permission=0）登录</div>
+      <div class="sub">后台管理系统 · 仅限管理员登录</div>
       <div class="badge">ADMIN CONSOLE</div>
       <div class="divider"></div>
 
@@ -25,6 +25,8 @@
       <button class="btn" type="submit" :disabled="loading">{{ loading ? '验 证 中…' : '登 录 后 台' }}</button>
 
       <button class="btn-guest" type="button" @click="$emit('back')">返回首页</button>
+
+      <div class="only-login">仅登录 · 不开放注册 · 权限由后台「用户管理」授予</div>
     </form>
 
     <!-- 提示 toast -->
@@ -48,7 +50,7 @@ const showPwd = ref(false)
 const loading = ref(false)
 const denied = ref(false)
 
-const DEFAULT_HINT = '普通用户（权限=1）无法登录后台管理系统。'
+const DEFAULT_HINT = '普通用户（权限=1）无法登录后台；如需开通，请联系管理员在「用户管理」中授权。'
 const denyHint = ref(DEFAULT_HINT)
 
 const toastMsg = ref('')
@@ -102,4 +104,6 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
   color: var(--muted); cursor: pointer; user-select: none; font-size: 14px; }
 .ico:hover { color: var(--jade); }
 .btn:disabled { opacity: .6; cursor: wait; }
+.only-login { margin-top: 14px; text-align: center; font-size: 11.5px;
+  color: var(--muted); letter-spacing: .5px; line-height: 1.8; opacity: .85; }
 </style>

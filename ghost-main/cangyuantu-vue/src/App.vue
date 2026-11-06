@@ -23,13 +23,15 @@
       @go-home="backToHome"
     />
 
-    <!-- 后台管理系统 · 管理员登录（仅权限 permission=0 可登录成功） -->
-    <AdminLogin
-      v-else-if="view === 'admin-login'"
-      :initial-name="adminBackName"
-      @admin-logged-in="onAdminLoggedIn"
-      @back="backToHome"
-    />
+    <!-- 后台管理系统 · 管理员登录（仅权限 permission=0 可登录成功；仅登录，不开放注册） -->
+    <template v-else-if="view === 'admin-login'">
+      <VisualPanel />
+      <AdminLogin
+        :initial-name="adminBackName"
+        @admin-logged-in="onAdminLoggedIn"
+        @back="backToHome"
+      />
+    </template>
 
     <!-- 后台管理系统 · 管理面板 -->
     <AdminPanel
@@ -76,9 +78,11 @@ function onLogout() {
   view.value = 'auth'
 }
 
-// 首页「后台管理」按钮（仅管理员渲染）→ 进入后台登录
+// 首页导航栏「后台管理」按钮 → 进入后台登录页（常显入口，普通用户与游客亦可到达，登录时校验权限）
 function openAdmin() {
-  adminBackName.value = (avatar.value && avatar.value.deity_name) || ''
+  const a = avatar.value || {}
+  // 仅当当前登录者本身是管理员（permission=0）时预填账号，避免普通用户误填
+  adminBackName.value = (!a.isGuest && Number(a.permission) === 0) ? (a.deity_name || '') : ''
   view.value = 'admin-login'
 }
 

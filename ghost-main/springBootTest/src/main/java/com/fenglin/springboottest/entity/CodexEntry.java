@@ -39,6 +39,15 @@ public class CodexEntry {
     /** 购得功法获得的神尊力，仅功法类有效 */
     private Integer powerGain;
 
+    /** 卡片主色（首页卡片左侧色带/标签色） */
+    private String color;
+
+    /** 排序（越小越前） */
+    private Integer sortNo;
+
+    /** 状态：1=上架（首页展示） 0=下架 */
+    private Integer status;
+
     /** 录入时间（数据库默认 CURRENT_TIMESTAMP） */
     private LocalDateTime createdAt;
 
@@ -65,6 +74,15 @@ public class CodexEntry {
 
     public Integer getPowerGain() { return powerGain; }
     public void setPowerGain(Integer powerGain) { this.powerGain = powerGain; }
+
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
+
+    public Integer getSortNo() { return sortNo; }
+    public void setSortNo(Integer sortNo) { this.sortNo = sortNo; }
+
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -61,7 +61,11 @@ public class AvatarController {
         return ResponseEntity.ok(ApiResult.ok("id", af.getId()));
     }
 
-    /** 查询神尊根基（登录页按名号查询） */
+    /**
+     * 查询神尊根基（登录页按名号查询）。
+     * 注意：口令（spell）在库中按需求明文存储，但对外查询接口不下发口令，
+     * 仅在 POST /api/login 内部做比对，避免任何人凭名号就能拉取明文密码。
+     */
     @GetMapping("/avatar")
     public ResponseEntity<Map<String, Object>> avatar(@RequestParam("name") String name) {
         if (name == null || name.isBlank()) {
@@ -71,6 +75,7 @@ public class AvatarController {
         if (af == null) {
             return ResponseEntity.status(404).body(ApiResult.fail("未寻得此神尊根基"));
         }
+        af.setSpell(null);
         return ResponseEntity.ok(ApiResult.ok("avatar", af));
     }
 
