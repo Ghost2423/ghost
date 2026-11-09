@@ -45,12 +45,12 @@
         <div class="switch">已有根基？<a href="#" @click.prevent="$emit('go-login')">返回觉醒 ›</a></div>
       </div>
 
-      <!-- 根基已成态（数据来自后端入库结果） -->
+      <!-- 根基已成态（数据来自后端入库结果）—— 不再显示人物画像，改用金印符纹 -->
       <div class="awaken" :class="{ show: forged }">
-        <div class="halo"><div class="portrait"><img :src="tianzunImg" alt="神尊" /></div><span class="flash"></span></div>
-        <div class="name">神尊根基已成</div>
+        <div class="halo seal-ring"><span class="seal-glyph">{{ sealGlyph }}</span></div>
+        <div class="name" :style="nameStyle">{{ forgedName }}</div>
         <span class="ink-stroke"></span>
-        <div class="desc">觉醒神尊 · {{ forgedName }}</div>
+        <div class="desc">神尊根基已成 · 已录入元界册籍</div>
         <div class="desc">你的账号 · {{ forgedAccount }}</div>
         <div class="myth">{{ forgedMyth }}</div>
         <button class="reset" type="button" @click="$emit('go-login')">前往觉醒</button>
@@ -63,9 +63,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { forgeAvatar } from '../api'
-import tianzunImg from '../assets/tianzun.jpg'
 
 defineEmits(['go-login'])
 
@@ -99,10 +98,18 @@ function pickMyth(seed) {
   return MYTHS[h % MYTHS.length]
 }
 
-// 锻造神尊封号（仅展示用，依据账号派生上古神尊之名）
+// 名号编号：与「游客入界」一致的四位编号（游客名号形如「游历散修·1234」）。
+// 由账号派生，同一账号恒定，避免每次注册都换号。
+function forgeSerial(seed) {
+  let h = 0
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return String(1000 + (h % 9000))
+}
+
+// 锻造神尊名号（展示用）：封号 + · + 编号，如「盘古真君·1234」
 function forgeSeal(seed) {
   const m = pickMyth(seed)
-  return (m.name + rnd(TITLES)).slice(0, 9)
+  return (m.name + rnd(TITLES)).slice(0, 6) + '·' + forgeSerial(seed)
 }
 
 // ===== 表单状态 =====
@@ -118,6 +125,17 @@ const forgedMyth = ref('')
 
 const pwdErr = ref(false)
 const pwdHint = ref('密码至少 6 位，支持数字、字母、汉字或英文任意组合。')
+
+// 金印符纹：取名号首字刻印（如「盘古真君·1234」→「盘」）
+const sealGlyph = computed(() => (forgedName.value || '印').slice(0, 1))
+
+// 名号字数不定（如「盘古真君·1234」共 8 字），按字数自适应字号，避免撑破卡片
+const nameStyle = computed(() => {
+  const n = [...(forgedName.value || '')].length
+  if (n <= 4) return { fontSize: '54px', letterSpacing: '10px' }
+  if (n <= 6) return { fontSize: '42px', letterSpacing: '6px' }
+  return { fontSize: '30px', letterSpacing: '2px' }
+})
 
 // ===== 验证码（神纹）=====
 const CAP_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -184,7 +202,7 @@ async function onSubmit() {
   const payload = {
     region: a,
     deity_name: a,        // 账号即登录名
-    myth_name: seal,      // 神尊封号（展示用）
+    myth_name: seal,      // 神尊名号（封号·编号，展示用）
     spell: p,             // 密码即召唤语
     myth_story: myth.name + '：' + myth.story,
     agreed: agree.value ? 1 : 0

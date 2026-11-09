@@ -34,15 +34,12 @@
         <div class="switch">尚无根基？<a href="#" @click.prevent="$emit('go-register')">前往锻造神尊根基 ›</a></div>
       </div>
 
-      <!-- 觉醒态（数据来自后端 MySQL） -->
+      <!-- 觉醒态（数据来自后端 MySQL）—— 不再显示人物画像，改用金印符纹 -->
       <div class="awaken" :class="{ show: awakened }">
-        <div class="halo">
-          <div class="portrait"><img :src="tianzunImg" alt="神尊" /></div>
-          <span class="flash"></span>
-        </div>
-        <!-- 元界之名：踏入沧元界的化身之名，取自神尊原型 myth_name。
-             例：账号「九天应元雷声普化天尊」即以「孟川」之名进入沧元界。 -->
-        <div class="name">{{ entryName }}</div>
+        <div class="halo seal-ring"><span class="seal-glyph">{{ sealGlyph }}</span></div>
+        <!-- 元界之名：踏入沧元界的化身之名，取自神尊名号 myth_name。
+             名号格式与「游客入界」一致：封号 + · + 四位编号（如「盘古真君·1234」）。 -->
+        <div class="name" :style="nameStyle">{{ entryName }}</div>
         <div class="deity" v-if="deityName && deityName !== entryName">
           {{ deityName }}<span class="deity-tag">神尊相</span>
         </div>
@@ -59,9 +56,8 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { loginAvatar } from '../api'
-import tianzunImg from '../assets/tianzun.jpg'
 
 const emit = defineEmits(['go-register', 'logged-in'])
 
@@ -76,6 +72,17 @@ const entryName = ref('')
 const deityName = ref('')
 const avatarDesc = ref('')
 const avatarMyth = ref('')
+
+// 名号字数不定（如「盘古真君·1234」共 8 字），按字数自适应字号，避免撑破卡片
+const nameStyle = computed(() => {
+  const n = [...(entryName.value || '')].length
+  if (n <= 4) return { fontSize: '54px', letterSpacing: '10px' }
+  if (n <= 6) return { fontSize: '42px', letterSpacing: '6px' }
+  return { fontSize: '30px', letterSpacing: '2px' }
+})
+
+// 金印符纹：取元界之名首字刻印（如「盘古真君·1234」→「盘」）
+const sealGlyph = computed(() => (entryName.value || '印').slice(0, 1))
 
 const toastMsg = ref('')
 const toastShow = ref(false)
@@ -101,8 +108,8 @@ async function onSubmit() {
 
   if (d.ok && d.avatar) {
     const av = d.avatar
-    // 元界之名（踏入沧元界的化身名）：优先取神尊原型 myth_name，
-    // 例如账号「九天应元雷声普化天尊」以「孟川」之名进入沧元界。
+    // 元界之名（踏入沧元界的化身名）：优先取神尊名号 myth_name，
+    // 与游客入界同名号格式（封号·四位编号，如「盘古真君·1234」）。
     entryName.value = av.myth_name || av.deity_name || ''
     deityName.value = av.deity_name || ''
     // 地域封号：region 形如「X府」时显王号「X王」（东宁府 → 东宁王），

@@ -166,38 +166,32 @@ body{
 .btn-guest:hover{border-color:var(--jade);background:rgba(45,212,191,.08)}
 .btn-guest:active{transform:translateY(1px)}
 
-/* 觉醒态：天尊·孟川（水墨动态版） */
+/* 觉醒态：金印符纹（不显示人物画像） */
 .awaken{display:none;text-align:center;animation:pop .55s ease both}
 .awaken.show{display:block}
 @keyframes pop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
 
-/* 头像：呼吸光晕 */
+/* 光晕：呼吸光环 */
 .awaken .halo{position:relative;width:180px;height:180px;margin:6px auto 18px;border-radius:50%;
   box-shadow:0 0 0 1px rgba(233,196,106,.35),0 0 46px rgba(233,196,106,.4);
   animation:haloGlow 2.6s ease-in-out infinite}
 @keyframes haloGlow{50%{box-shadow:0 0 0 1px rgba(233,196,106,.6),0 0 82px rgba(233,196,106,.75)}}
 
-/* 头像本体：缓慢浮动的动态渲染 */
-.awaken .halo .portrait{position:absolute;inset:0;border-radius:50%;overflow:hidden;
-  box-shadow:inset 0 0 34px rgba(0,0,0,.6)}
-.awaken .halo .portrait img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block;
-  filter:saturate(1.06) contrast(1.06);
-  animation:portraitFloat 6s ease-in-out infinite}
-@keyframes portraitFloat{0%,100%{transform:scale(1.04)}50%{transform:scale(1.1) translateY(-5px)}}
-/* 水墨晕染边缘 */
-.awaken .halo .portrait::before{content:"";position:absolute;inset:0;border-radius:50%;z-index:2;pointer-events:none;
-  background:radial-gradient(circle at 32% 28%,transparent 50%,rgba(7,11,22,.5) 74%,rgba(7,11,22,.94) 97%)}
-/* 雷光扫过 */
-.awaken .halo .flash{position:absolute;inset:0;border-radius:50%;z-index:3;pointer-events:none;
-  background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.9) 50%,transparent 60%);
-  mix-blend-mode:screen;opacity:0;animation:flash 5.2s ease-in-out infinite}
-@keyframes flash{0%,86%,100%{opacity:0}88%{opacity:.95}90%{opacity:.1}92%{opacity:.65}95%{opacity:0}}
 /* 旋转灵气环 */
 .awaken .halo::after{content:"";position:absolute;inset:-9px;border-radius:50%;pointer-events:none;z-index:4;
   background:conic-gradient(from 0deg,transparent 0 60%,rgba(233,196,106,.55) 78%,rgba(45,212,191,.45) 88%,transparent 100%);
   -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));
   mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));
   animation:spin 7s linear infinite}
+
+/* 金印符纹：觉醒态不显示人物画像时，以名号首字刻印（注册/登录共用） */
+.awaken .halo.seal-ring{display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 44%,rgba(233,196,106,.18),rgba(7,11,22,.78) 72%)}
+.awaken .halo .seal-glyph{position:relative;z-index:3;font-family:"Ma Shan Zheng","ZCOOL XiaoWei",serif;
+  font-size:68px;line-height:1;color:var(--gold);
+  text-shadow:0 0 26px rgba(233,196,106,.7),0 0 64px rgba(233,196,106,.35);
+  animation:glyphBreathe 3.6s ease-in-out infinite}
+@keyframes glyphBreathe{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.07);opacity:1}}
 
 /* 名号：毛笔水墨 · 墨迹晕开入场 + 流光 */
 .awaken .name{

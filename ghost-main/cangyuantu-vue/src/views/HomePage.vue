@@ -230,7 +230,7 @@ function onMenu(m) {
 function goHome() { clearSearch(); activeMenu.value = 'home'; scrollTop() }
 
 /* ===== 用户 ===== */
-// 元界之名（踏入沧元界的化身名）：注册神尊取神尊原型 myth_name（如 雷声普化天尊 → 孟川），
+// 元界之名（踏入沧元界的化身名）：注册神尊取神尊名号 myth_name（封号·四位编号，如「盘古真君·1234」），
 // 游客取其生成的随机名号；作为右上角身份与头像首字。
 const entryName = computed(() => {
   const a = props.avatar || {}

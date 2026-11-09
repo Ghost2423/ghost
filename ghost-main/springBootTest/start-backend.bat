@@ -60,7 +60,7 @@ if errorlevel 1 (
 :run
 rem ---- 6. 启动后端（显式指定端口，避免环境变量干扰）----
 echo [启动] 正在启动沧元界后端 ...
-start "沧元界-后端" cmd /k java -jar "%~dp0target\springBootTest-0.0.1-SNAPSHOT.jar" --server.port=8125
+start "沧元界-后端" cmd /k java -jar "%~dp0target\springBootTest-0.0.1-SNAPSHOT.jar" --server.port=8125 --server.address=192.168.68.50
 
 rem ---- 7. 等待端口就绪 ----
 set /a tries=0
@@ -78,8 +78,8 @@ echo [OK] 后端已启动
 :done
 echo.
 echo ==================================================
-echo   后端地址:  http://127.0.0.1:8125
-echo   接口自检:  http://127.0.0.1:8125/api/avatar?name=九天应元雷声普化天尊
+echo   后端地址:  http://192.168.68.50:8125
+echo   接口自检:  http://192.168.68.50:8125/api/avatar?name=九天应元雷声普化天尊
 echo   前端请运行: cangyuantu-vue\start-frontend.bat
 echo ==================================================
 goto :end
