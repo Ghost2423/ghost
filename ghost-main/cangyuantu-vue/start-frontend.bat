@@ -55,9 +55,9 @@ echo [OK] 前端已启动
 :done
 echo.
 echo ==================================================
-echo   前端地址:  http://192.168.68.50:5173
+echo   前端地址:  http://localhost:5173
 echo   依赖后端:  请先运行 springBootTest\start-backend.bat
-echo   API 代理:  /api -^> http://192.168.68.50:8125
+echo   API 代理:  /api -^> http://127.0.0.1:8125
 echo ==================================================
 goto :end
 

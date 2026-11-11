@@ -41,3 +41,8 @@ Thumbs.db
 # ===================== 打包/压缩临时产物 =====================
 *.zip
 *.tar.gz
+
+# ===================== 同步凭证 / Vite 临时配置 =====================
+# 双保险：项目子目录 ghost-main/.gitignore 也有同名规则，务必两处都保留
+github-token.txt
+vite.config.js.timestamp-*.mjs

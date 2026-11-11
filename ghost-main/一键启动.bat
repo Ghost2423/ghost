@@ -58,6 +58,7 @@ if not exist "%MYSQL_BIN%" set "MYSQL_BIN=mysql.exe"
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\cangyuan.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\cultivation.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\admin_home.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\register_account.sql" >nul 2>nul
 if errorlevel 1 (
   echo   [警告] 数据库脚本未执行成功（若库已存在可忽略）
 ) else (
@@ -85,7 +86,7 @@ if not exist "%JAR%" (
   goto :fail
 )
 :runbe
-start "沧元图-后端" /d "%BE%" cmd /k java -jar "%JAR%" --server.port=8125 --server.address=192.168.68.50
+start "沧元图-后端" /d "%BE%" cmd /k java -jar "%JAR%" --server.port=8125 --server.address=0.0.0.0
 set /a t=0
 :waitbe
 netstat -ano | findstr "LISTENING" | findstr /C:":8125 " >nul 2>nul
@@ -98,7 +99,7 @@ goto :waitbe
 echo   [错误] 端口 8125 在 60 秒内未就绪，请查看「沧元图-后端」窗口日志
 goto :fail
 :beok
-echo   [OK] 后端已启动 http://192.168.68.50:8125
+echo   [OK] 后端已启动 http://localhost:8125
 
 rem ================= 5. 启动前端 =================
 :frontend
@@ -131,18 +132,18 @@ goto :waitfe
 echo   [错误] 端口 5173 在 40 秒内未就绪，请查看「沧元图-前端」窗口日志
 goto :fail
 :feok
-echo   [OK] 前端已启动 http://192.168.68.50:5173
+echo   [OK] 前端已启动 http://localhost:5173
 
 rem ================= 6. 打开浏览器 =================
 :open
 echo [6/6] 打开浏览器 ...
-start "" http://192.168.68.50:5173
+start "" http://localhost:5173
 
 echo.
 echo ============================================================
 echo   启动完成！
-echo     访问地址 : http://192.168.68.50:5173
-echo     后端接口 : http://192.168.68.50:8125
+echo     访问地址 : http://localhost:5173
+echo     后端接口 : http://localhost:8125
 echo     停止服务 : 双击运行 一键停止.bat
 echo.
 echo   测试账号: 九天应元雷声普化天尊 / 诸般雷霆，遵吾号令

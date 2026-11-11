@@ -5,6 +5,8 @@ import com.fenglin.springboottest.dto.ForgeRequest;
 import com.fenglin.springboottest.dto.LoginRequest;
 import com.fenglin.springboottest.entity.AvatarFoundation;
 import com.fenglin.springboottest.service.AvatarFoundationService;
+import com.fenglin.springboottest.service.RegisterRecordService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +32,13 @@ public class AvatarController {
     @Autowired
     private AvatarFoundationService avatarService;
 
-    /** 锻造神尊根基（注册） */
+    @Autowired
+    private RegisterRecordService registerRecordService;
+
+    /** 锻造神尊根基（注册）：同一事务写入 avatar_foundation + user_register_record */
     @PostMapping("/forge")
-    public ResponseEntity<Map<String, Object>> forge(@RequestBody ForgeRequest req) {
+    public ResponseEntity<Map<String, Object>> forge(@RequestBody ForgeRequest req,
+                                                     HttpServletRequest request) {
         String region = trim(req.getRegion());
         String deity = trim(req.getDeityName());
         String spell = trim(req.getSpell());
@@ -57,8 +63,22 @@ public class AvatarController {
         // 注册用户一律为默认权限（1=默认用户）；管理员权限(0)仅可由后台指定
         af.setPermission(1);
 
-        avatarService.save(af);
-        return ResponseEntity.ok(ApiResult.ok("id", af.getId()));
+        // 两表同事务落库：神尊根基 + 每次注册的账号留痕
+        registerRecordService.saveRegistration(af, clientIp(request));
+
+        Map<String, Object> result = ApiResult.ok("id", af.getId());
+        result.put("register_record", true); // 明确告知前端：账号已单独存入注册表
+        return ResponseEntity.ok(result);
+    }
+
+    /** 取注册来源 IP（兼容反向代理的 X-Forwarded-For） */
+    private static String clientIp(HttpServletRequest request) {
+        if (request == null) return null;
+        String forwarded = request.getHeader("X-Forwarded-For");
+        String ip = (forwarded != null && !forwarded.isBlank())
+                ? forwarded.split(",")[0].trim()
+                : request.getRemoteAddr();
+        return ip == null ? null : (ip.length() > 64 ? ip.substring(0, 64) : ip);
     }
 
     /**

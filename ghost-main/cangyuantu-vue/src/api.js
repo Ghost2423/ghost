@@ -89,6 +89,11 @@ export function fetchAdminUsers(cred) {
   })
 }
 
+/** 注册账号记录：POST /api/admin/register/records -> {ok, records:[...]}（每次注册一条，删用户仍保留） */
+export function fetchRegisterRecords(cred) {
+  return request('/api/admin/register/records', jsonPost(cred))
+}
+
 /** 变更用户权限：POST /api/admin/permission {name, spell, target_id, permission} */
 export function updatePermission(cred, targetId, permission) {
   return request('/api/admin/permission', {

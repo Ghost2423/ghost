@@ -3,3 +3,17 @@ github-token.txt
 
 # 运行日志，不入库
 springBootTest/log/
+springBootTest/backend-run.log
+
+# 构建产物与依赖（体积极大，禁止入库；同步脚本 git add -A 会自动跳过）
+node_modules/
+target/
+dist/
+
+# 编辑器 / Vite 临时文件
+.vite/
+vite.config.js.timestamp-*.mjs
+*.local
+.DS_Store
+*.rar
+*.zip

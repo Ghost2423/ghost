@@ -55,6 +55,7 @@ import SectionTab from './admin/SectionTab.vue'
 import NewsTab from './admin/NewsTab.vue'
 import SettingTab from './admin/SettingTab.vue'
 import UserTab from './admin/UserTab.vue'
+import RegisterTab from './admin/RegisterTab.vue'
 import LogTab from './admin/LogTab.vue'
 
 const props = defineProps({
@@ -74,6 +75,7 @@ const menus = [
   { key: 'news', icon: '✉', label: '元界动态', desc: '首页滚动动态条', tag: 'NEWS', comp: NewsTab },
   { key: 'setting', icon: '✎', label: '站点文案', desc: '品牌名 / 首屏标题 / 热门标签', tag: 'COPY', comp: SettingTab },
   { key: 'users', icon: '☰', label: '用户管理', desc: '注册用户与后台权限', tag: 'USERS', comp: UserTab },
+  { key: 'registers', icon: '✦', label: '注册记录', desc: '每次注册的账号留痕', tag: 'REGISTERS', comp: RegisterTab },
   { key: 'logs', icon: '✧', label: '操作日志', desc: '后台操作审计记录', tag: 'LOGS', comp: LogTab }
 ]
 

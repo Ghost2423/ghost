@@ -4,6 +4,7 @@ import com.fenglin.springboottest.common.ApiResult;
 import com.fenglin.springboottest.dto.AdminRequest;
 import com.fenglin.springboottest.entity.AvatarFoundation;
 import com.fenglin.springboottest.service.AvatarFoundationService;
+import com.fenglin.springboottest.service.RegisterRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +38,9 @@ public class AdminController {
 
     @Autowired
     private AvatarFoundationService avatarService;
+
+    @Autowired
+    private RegisterRecordService registerRecordService;
 
     /**
      * 管理员凭证校验：账号存在、密码（明文比对）、权限为 0（管理员）。
@@ -100,6 +104,18 @@ public class AdminController {
                 .toList();
         Map<String, Object> r = ApiResult.ok();
         r.put("users", users);
+        return ResponseEntity.ok(r);
+    }
+
+    /** 注册账号记录（需管理员凭证）：每次注册落库的历史，删用户也不会消失 */
+    @PostMapping("/register/records")
+    public ResponseEntity<Map<String, Object>> registerRecords(@RequestBody AdminRequest req) {
+        AvatarFoundation admin = requireAdmin(req.getName(), req.getSpell());
+        if (admin == null) {
+            return ResponseEntity.status(403).body(ApiResult.fail("无权访问：仅管理员可查看注册记录"));
+        }
+        Map<String, Object> r = ApiResult.ok();
+        r.put("records", registerRecordService.listRecent(500));
         return ResponseEntity.ok(r);
     }
 

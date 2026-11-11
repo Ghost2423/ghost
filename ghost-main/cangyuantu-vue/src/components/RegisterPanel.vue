@@ -212,17 +212,21 @@ async function onSubmit() {
   const d = await forgeAvatar(payload)
   loading.value = false
 
+  // 只有后端确认两张表都写入成功，才显示「根基已成」；
+  // 否则账号并未保存，必须让用户留在表单里重试，避免误以为注册成功。
+  if (!d || !d.ok) {
+    toast('注册未保存：' + ((d && d.msg) || '无法连接元界数据库'))
+    genCaptcha()
+    capInput.value = ''
+    return
+  }
+
   // 显现锻造结果
   forgedName.value = seal
   forgedAccount.value = a
   forgedMyth.value = myth.name + '：' + myth.story
   forged.value = true
-
-  if (d.ok) {
-    toast('神尊根基已锻造 · 已录入元界数据库')
-  } else {
-    toast('根基已成，数据库：' + (d.msg || '写入失败'))
-  }
+  toast('神尊根基已锻造 · 账号已录入元界数据库')
 }
 </script>
 

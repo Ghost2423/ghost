@@ -7,6 +7,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
  * 跨域配置：允许 Vite 开发服务器(5173)直连后端。
  * （开发时前端已通过 Vite 代理转发 /api，此配置为直连兜底。）
+ * 用 allowedOriginPatterns 而不是写死局域网 IP：localhost 与任意局域网 IP 都能访问，
+ * 电脑换 IP 也不会失效；本配置未开启 allowCredentials，通配符匹配是安全的。
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -14,7 +16,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins("http://192.168.68.50:5173")
+                .allowedOriginPatterns("http://localhost:5173", "http://127.0.0.1:5173", "http://*:5173")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .maxAge(3600);

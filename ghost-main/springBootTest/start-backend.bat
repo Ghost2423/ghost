@@ -34,7 +34,12 @@ echo [OK] MySQL 运行中 (127.0.0.1:3306)
 rem ---- 3. 初始化数据库（幂等，可重复执行）----
 set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 if not exist "%MYSQL_BIN%" set "MYSQL_BIN=mysql.exe"
+rem 必须与根目录「一键启动.bat」的 SQL 列表保持一致，
+rem 否则单独启动后端时会缺表（例如 user_register_record），注册接口会直接报错。
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\cangyuan.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\cultivation.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\admin_home.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\register_account.sql" >nul 2>nul
 if errorlevel 1 (
   echo [警告] 数据库初始化未成功（若库已存在可忽略）
 ) else (
@@ -48,8 +53,10 @@ if not errorlevel 1 (
   goto :done
 )
 
-rem ---- 5. 构建（target 每次开机会被删除，缺失则重建）----
+rem ---- 5. 构建（缺 jar 时重建；改过 Java 代码可运行 start-backend.bat rebuild 强制重编）----
+if /i "%~1"=="rebuild" goto :build
 if exist "target\springBootTest-0.0.1-SNAPSHOT.jar" goto :run
+:build
 echo [构建] 正在编译打包（阿里云镜像，首次约 1 分钟）...
 call mvnw.cmd -s "%~dp0maven-settings-aliyun.xml" package -DskipTests
 if errorlevel 1 (
@@ -60,7 +67,7 @@ if errorlevel 1 (
 :run
 rem ---- 6. 启动后端（显式指定端口，避免环境变量干扰）----
 echo [启动] 正在启动沧元界后端 ...
-start "沧元界-后端" cmd /k java -jar "%~dp0target\springBootTest-0.0.1-SNAPSHOT.jar" --server.port=8125 --server.address=192.168.68.50
+start "沧元界-后端" cmd /k java -jar "%~dp0target\springBootTest-0.0.1-SNAPSHOT.jar" --server.port=8125 --server.address=0.0.0.0
 
 rem ---- 7. 等待端口就绪 ----
 set /a tries=0
@@ -78,8 +85,8 @@ echo [OK] 后端已启动
 :done
 echo.
 echo ==================================================
-echo   后端地址:  http://192.168.68.50:8125
-echo   接口自检:  http://192.168.68.50:8125/api/avatar?name=九天应元雷声普化天尊
+echo   后端地址:  http://localhost:8125
+echo   接口自检:  http://localhost:8125/api/avatar?name=九天应元雷声普化天尊
 echo   前端请运行: cangyuantu-vue\start-frontend.bat
 echo ==================================================
 goto :end
