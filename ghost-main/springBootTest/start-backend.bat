@@ -40,6 +40,7 @@ rem 否则单独启动后端时会缺表（例如 user_register_record），注册接口会直接报错。
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\cultivation.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\admin_home.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\register_account.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%~dp0sql\forum.sql" >nul 2>nul
 if errorlevel 1 (
   echo [警告] 数据库初始化未成功（若库已存在可忽略）
 ) else (

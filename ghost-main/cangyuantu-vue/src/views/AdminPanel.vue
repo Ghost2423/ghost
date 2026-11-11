@@ -57,6 +57,7 @@ import SettingTab from './admin/SettingTab.vue'
 import UserTab from './admin/UserTab.vue'
 import RegisterTab from './admin/RegisterTab.vue'
 import LogTab from './admin/LogTab.vue'
+import ForumTab from './admin/ForumTab.vue'
 
 const props = defineProps({
   // 管理员实体（来自 /api/admin/login，permission=0）
@@ -76,6 +77,7 @@ const menus = [
   { key: 'setting', icon: '✎', label: '站点文案', desc: '品牌名 / 首屏标题 / 热门标签', tag: 'COPY', comp: SettingTab },
   { key: 'users', icon: '☰', label: '用户管理', desc: '注册用户与后台权限', tag: 'USERS', comp: UserTab },
   { key: 'registers', icon: '✦', label: '注册记录', desc: '每次注册的账号留痕', tag: 'REGISTERS', comp: RegisterTab },
+  { key: 'forum', icon: '❖', label: '论道管理', desc: '论道帖 / 回帖 / 置顶与屏蔽', tag: 'FORUM', comp: ForumTab },
   { key: 'logs', icon: '✧', label: '操作日志', desc: '后台操作审计记录', tag: 'LOGS', comp: LogTab }
 ]
 

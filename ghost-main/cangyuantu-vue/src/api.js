@@ -200,6 +200,74 @@ export function saveAdminSettings(cred, settings) {
   return request('/api/admin/setting/save', jsonPost({ ...cred, settings }))
 }
 
+/* =============================================================
+ * 论道论坛 API（读接口游客可用；写接口以 {name, spell} 校验身份）
+ * ============================================================= */
+
+/** 帖子列表：POST /api/forum/posts {category, keyword, sort, page, page_size, name} */
+export function fetchForumPosts(opts = {}) {
+  return request('/api/forum/posts', jsonPost({
+    category: opts.category || '',
+    keyword: opts.keyword || '',
+    sort: opts.sort || 'latest',
+    page: opts.page || 1,
+    page_size: opts.pageSize || 8,
+    name: opts.viewer || ''
+  }))
+}
+
+/** 帖子详情（含回帖，阅卷数 +1）：GET /api/forum/post?id=&viewer= */
+export function fetchForumPost(id, viewer = '') {
+  return request('/api/forum/post?id=' + id + '&viewer=' + encodeURIComponent(viewer || ''))
+}
+
+/** 论坛总览统计：GET /api/forum/stats */
+export function fetchForumStats() {
+  return request('/api/forum/stats')
+}
+
+/** 开坛立论：POST /api/forum/post/create */
+export function createForumPost(cred, item) {
+  return request('/api/forum/post/create', jsonPost({ ...cred, ...item }))
+}
+
+/** 回帖：POST /api/forum/reply/create */
+export function createForumReply(cred, postId, content) {
+  return request('/api/forum/reply/create', jsonPost({ ...cred, post_id: postId, content }))
+}
+
+/** 共鸣（点赞）切换：POST /api/forum/like/toggle */
+export function toggleForumLike(cred, postId) {
+  return request('/api/forum/like/toggle', jsonPost({ ...cred, post_id: postId }))
+}
+
+/** 撤下论题（作者或管理员）：POST /api/forum/post/delete */
+export function deleteForumPost(cred, postId) {
+  return request('/api/forum/post/delete', jsonPost({ ...cred, post_id: postId }))
+}
+
+/** 后台 · 论道帖列表（含已隐藏）：POST /api/admin/forum/list */
+export function fetchAdminForum(cred, opts = {}) {
+  return request('/api/admin/forum/list', jsonPost({
+    ...cred, keyword: opts.keyword || '', page: opts.page || 1, page_size: opts.pageSize || 20
+  }))
+}
+
+/** 后台 · 置顶 / 屏蔽 / 恢复：POST /api/admin/forum/update */
+export function updateAdminForum(cred, id, patch) {
+  return request('/api/admin/forum/update', jsonPost({ ...cred, id, ...patch }))
+}
+
+/** 后台 · 查看某帖全部回帖：POST /api/admin/forum/replies */
+export function fetchAdminForumReplies(cred, postId) {
+  return request('/api/admin/forum/replies', jsonPost({ ...cred, post_id: postId }))
+}
+
+/** 后台 · 隐藏回帖：POST /api/admin/forum/reply/delete */
+export function deleteAdminForumReply(cred, replyId) {
+  return request('/api/admin/forum/reply/delete', jsonPost({ ...cred, reply_id: replyId }))
+}
+
 /** 统一 JSON POST 构造 */
 function jsonPost(body) {
   return {

@@ -6,7 +6,7 @@
 
 项目根目录：`D:\workSpace\ghost\ghost-main`（Git 仓库根在上一级 `D:\workSpace\ghost`，索引路径带 `ghost-main/` 前缀；同步脚本在项目根运行即可）。双击运行根目录的 **`一键启动.bat`**，即可自动拉起后端（Spring Boot :8125）与前端（Vue3 + Vite :5173），并自动打开 http://localhost:5173 （后端 http://localhost:8125）。
 
-- 首次运行会自动完成 Maven 打包与 npm 依赖安装（约 1-2 分钟），并按序执行 4 个幂等建表脚本：`cangyuan.sql`、`cultivation.sql`、`admin_home.sql`、`register_account.sql`
+- 首次运行会自动完成 Maven 打包与 npm 依赖安装（约 1-2 分钟），并按序执行 5 个幂等建表脚本：`cangyuan.sql`、`cultivation.sql`、`admin_home.sql`、`register_account.sql`、`forum.sql`
 - 前后端均绑定 `0.0.0.0`：`localhost` 与局域网实际 IP 都可访问，换 IP 不会导致启动失败；**不要在配置里写死局域网 IP**
 - 改过 Java 代码后需重新打包：运行 `springBootTest\start-backend.bat rebuild`（或删掉 `target` 下 jar 再启动）
 - 停止服务：双击 **`一键停止.bat`**；单服务可用 `springBootTest\stop-backend.bat`、`cangyuantu-vue\stop-frontend.bat`
@@ -38,9 +38,10 @@
 | 站点文案 | 品牌名/首屏标题/检索占位/热门标签/页脚，左侧编辑右侧**实时预览首屏** | `cy_site_setting` |
 | 用户管理 | 用户列表、权限变更、删除 | `avatar_foundation` |
 | 注册记录 | 每次注册账号的独立留痕（含密码、IP、时间），删用户仍保留 | `user_register_record` |
+| 论道管理 | 论题/回帖查看、置顶、屏蔽与恢复、隐藏回帖 | `cy_forum_post` / `cy_forum_reply` |
 | 操作日志 | 后台操作审计 | `cy_admin_log` |
 
-后台相关建表脚本：`springBootTest/sql/admin_home.sql`；注册留痕表：`springBootTest/sql/register_account.sql`（均幂等，一键启动与 `start-backend.bat` 都会自动执行）。
+后台相关建表脚本：`springBootTest/sql/admin_home.sql`；注册留痕表：`springBootTest/sql/register_account.sql`；论道论坛：`springBootTest/sql/forum.sql`（均幂等，一键启动与 `start-backend.bat` 都会自动执行）。
 首页配置接口：`GET /api/home/config`；后台接口：`POST /api/admin/*`（均校验管理员凭证），注册记录查询为 `POST /api/admin/register/records`。
 
 ### 图鉴分页与批量上下架
@@ -58,3 +59,29 @@
 - **站点文案**：表单左侧编辑，右侧吸附（sticky）一块「首页首屏」示意，徽标 / 主标题（鎏金渐变字）/ 副标题 / 检索占位 / 热门标签 / 品牌印章 / 页脚随输入实时变化；留空字段显示首页实际会用的兜底文案，清空热门标签会提示「首页该行隐藏」
 - **核心界域**：编辑弹窗改为左右两栏，右侧按首页卡片样式等比渲染标题、图标、主色（连左边色条与光晕一起）、简介与「收录 N」；状态选「隐藏」时卡片上出现「已隐藏 · 首页不显示」角标
 - 预览纯前端渲染，**不写库**：点「取消」或「重新读取」即回到数据库原值
+
+## 论道论坛
+
+入口：首页导航栏 **「论道论坛」** → 论道坛（游客可读，发帖/回帖/共鸣需已觉醒神尊根基）。
+
+**功能**：四大板块（论道 / 切磋 / 妖情 / 闲谈）、关键词检索、最新/最热排序、分页、开坛立论、楼层回帖、共鸣（一人一帖一次，可取消）、阅卷数、作者或管理员撤帖、热议论题与板块统计侧栏。
+
+**数据表**（`springBootTest/sql/forum.sql`，幂等，首次执行自带 3 篇示例论题与 3 条回帖）：
+
+| 表 | 用途 |
+| --- | --- |
+| `cy_forum_post` | 论题：板块、标题、正文、发帖账号/名号、阅卷/共鸣/回帖计数、置顶、状态、时间 |
+| `cy_forum_reply` | 回帖：帖子 ID、楼层、作者、正文、状态 |
+| `cy_forum_like` | 共鸣记录：`(post_id, user_name)` 唯一，防重复点赞 |
+
+软删除策略：撤帖 / 屏蔽 / 隐藏回帖都是把 `status` 置 0，数据保留，后台可恢复；回帖隐藏会同步回退主帖 `reply_count`。
+
+**接口**（读接口游客可用；写接口以 `name + spell` 校验身份，与登录/修炼系统一致）：
+
+- 读：`POST /api/forum/posts`、`GET /api/forum/post?id=&viewer=`、`GET /api/forum/stats`
+- 写：`POST /api/forum/post/create`、`reply/create`、`like/toggle`、`post/delete`
+- 后台（均校验管理员凭证）：`POST /api/admin/forum/list | update | replies | reply/delete`
+
+后台「论道管理」页签可查看含隐藏帖的全部论题、置顶/取消、屏蔽/恢复、展开回帖并隐藏违规回帖，操作写入 `cy_admin_log`。
+
+查看数据：`SELECT * FROM cangyuan.cy_forum_post ORDER BY id DESC;`

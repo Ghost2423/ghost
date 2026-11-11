@@ -182,7 +182,7 @@ import { ref, computed, onMounted } from 'vue'
 import { searchCangyuan, fetchCodex, fetchHomeConfig } from '../api'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
-const emit = defineEmits(['logout', 'open-admin', 'open-cultivation'])
+const emit = defineEmits(['logout', 'open-admin', 'open-cultivation', 'open-forum'])
 
 const root = ref(null)
 function scrollTop() { if (root.value) root.value.scrollTo({ top: 0, behavior: 'smooth' }) }
@@ -216,7 +216,7 @@ const menus = [
 ]
 function onMenu(m) {
   if (m.key === 'home') { clearSearch(); activeMenu.value = 'home'; scrollTop(); return }
-  if (m.key === 'forum') { toast('论道论坛尚在开辟中，敬请期待'); return }
+  if (m.key === 'forum') { activeMenu.value = 'forum'; emit('open-forum'); return }
   if (m.key === 'cultivation') {
     // 修炼殿需要神尊根基（数据库记录）；游客无根基，先行拦截
     const a = props.avatar || {}

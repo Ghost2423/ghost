@@ -14,11 +14,19 @@
       @logout="onLogout"
       @open-admin="openAdmin"
       @open-cultivation="openCultivation"
+      @open-forum="openForum"
     />
 
     <!-- 修炼殿（修炼系统：境界/神尊力/秘境/切磋/功法阁） -->
     <CultivationPanel
       v-else-if="view === 'cultivation'"
+      :avatar="avatar"
+      @go-home="backToHome"
+    />
+
+    <!-- 论道论坛（发帖 / 回帖 / 共鸣 / 板块检索 / 后台论道管理） -->
+    <ForumPanel
+      v-else-if="view === 'forum'"
       :avatar="avatar"
       @go-home="backToHome"
     />
@@ -52,11 +60,12 @@ import AdminLogin from './components/AdminLogin.vue'
 import HomePage from './views/HomePage.vue'
 import AdminPanel from './views/AdminPanel.vue'
 import CultivationPanel from './views/CultivationPanel.vue'
+import ForumPanel from './views/ForumPanel.vue'
 
 // 登录 / 注册 双视图切换
 const mode = ref('login')
 
-// 视图：'auth' 登录注册 | 'home' 首页 | 'cultivation' 修炼殿 | 'admin-login' 后台登录 | 'admin' 后台管理
+// 视图：'auth' 登录注册 | 'home' 首页 | 'cultivation' 修炼殿 | 'forum' 论道论坛 | 'admin-login' 后台登录 | 'admin' 后台管理
 const view = ref('auth')
 // 当前神尊根基（来自后端 MySQL）
 const avatar = ref(null)
@@ -89,6 +98,11 @@ function openAdmin() {
 // 首页「修炼」菜单 → 进入修炼殿（游客已被首页拦截，不会到达此处）
 function openCultivation() {
   view.value = 'cultivation'
+}
+
+// 首页「论道论坛」菜单 → 进入论道坛（游客可浏览，写操作由前端与后端双重拦截）
+function openForum() {
+  view.value = 'forum'
 }
 
 // 管理员登录成功 → 进入后台管理面板

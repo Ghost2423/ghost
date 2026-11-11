@@ -59,6 +59,7 @@ if not exist "%MYSQL_BIN%" set "MYSQL_BIN=mysql.exe"
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\cultivation.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\admin_home.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\register_account.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\forum.sql" >nul 2>nul
 if errorlevel 1 (
   echo   [警告] 数据库脚本未执行成功（若库已存在可忽略）
 ) else (

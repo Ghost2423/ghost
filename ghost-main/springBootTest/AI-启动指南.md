@@ -10,7 +10,7 @@
 双击运行  D:\workSpace\ghost\ghost-main\一键启动.bat
 ```
 
-脚本顺序：环境检查 → MySQL 检测/启动 → 执行 4 个建表脚本（幂等）→ 后端（缺 jar 时自动 mvn 打包）:8125 → 前端（缺 node_modules 时自动 npm install）:5173 → 自动打开浏览器。
+脚本顺序：环境检查 → MySQL 检测/启动 → 执行 5 个建表脚本（幂等）→ 后端（缺 jar 时自动 mvn 打包）:8125 → 前端（缺 node_modules 时自动 npm install）:5173 → 自动打开浏览器。
 停止：双击 `D:\workSpace\ghost\ghost-main\一键停止.bat`。
 
 浏览器访问：**http://localhost:5173**（后端 **http://localhost:8125**）。
@@ -33,7 +33,7 @@ D:\workSpace\ghost\ghost-main\cangyuantu-vue\start-frontend.bat           # 前�
 | **前端** | `...\ghost-main\cangyuantu-vue` | Vue3 + Vite 5，端口 **5173**，`/api` 代理到 `http://127.0.0.1:8125` |
 | **后端** | `...\ghost-main\springBootTest` | Spring Boot 3.4.5 (Java 21) + MyBatis-Plus 3.5.7，端口 **8125** |
 | **数据库** | MySQL 8 | 库 `cangyuan`，root/123456，127.0.0.1:3306 |
-| **SQL** | `springBootTest\sql\` | 一键启动按序执行：`cangyuan.sql` → `cultivation.sql` → `admin_home.sql` → `register_account.sql`（均幂等）；另有 `cangyuan_codex.sql`、`upgrade_*.sql` |
+| **SQL** | `springBootTest\sql\` | 一键启动按序执行：`cangyuan.sql` → `cultivation.sql` → `admin_home.sql` → `register_account.sql` → `forum.sql`（均幂等）；另有 `cangyuan_codex.sql`、`upgrade_*.sql` |
 | 根目录 `index.html` | 历史单文件静态页 | 已废弃，勿动 |
 
 后端包结构：`com.fenglin.springboottest` 下 entity / mapper / service / controller / dto / common / config。
@@ -46,6 +46,10 @@ D:\workSpace\ghost\ghost-main\cangyuantu-vue\start-frontend.bat           # 前�
 | `POST /api/forge` `{region, deity_name, myth_name, spell, myth_story, agreed}` | 注册：**同一事务**写 `avatar_foundation` + `user_register_record`，成功 `{ok, id, register_record:true}`；重复 409 |
 | `GET /api/avatar?name=神尊相` | 查根基，不下发 spell；404 未寻得 |
 | `POST /api/admin/register/records` `{name, spell}` | 仅管理员，返回最近 500 条注册记录，字段 snake_case |
+| `POST /api/forum/posts` `{category, keyword, sort, page, page_size, name}` | 论道帖列表（游客可读，分类/搜索/最新或最热/分页） |
+| `GET /api/forum/post?id=&viewer=` / `GET /api/forum/stats` | 帖子详情（含回帖，阅卷 +1）/ 论坛统计 |
+| `POST /api/forum/post/create` / `reply/create` / `like/toggle` / `post/delete` | 写操作均校验 `{name, spell}`；共鸣一人一帖一次可取消，撤帖为软删除 |
+| `POST /api/admin/forum/list` / `update` / `replies` / `reply/delete` | 后台论道管理：列表含隐藏帖、置顶、屏蔽/恢复、隐藏回帖 |
 | `POST /api/admin/*` | 后台全部接口均校验管理员凭证 |
 
 测试账号：`九天应元雷声普化天尊` / `诸般雷霆，遵吾号令`。
@@ -56,6 +60,7 @@ D:\workSpace\ghost\ghost-main\cangyuantu-vue\start-frontend.bat           # 前�
 - `avatar_foundation`：`id` / `region` / `deity_name`(唯一，账号) / `myth_name` / `spell`(明文密码) / `myth_story` / `agreed` / `permission`(1 用户, 0 管理员) / `created_at`
 - `user_register_record`：`id` / `avatar_id`(历史留痕) / `account` / `password` / `region` / `myth_name` / `myth_story` / `agreed` / `permission` / `register_ip` / `source`(`forge` / `migrate`) / `created_at`
   → **每次注册独立落库，删用户/改权限都不会抹掉**；后台「注册记录」页签可查。
+- `cy_forum_post` / `cy_forum_reply` / `cy_forum_like`：**论道论坛**三表，建表脚本 `sql\forum.sql`（幂等，含 3 篇示例帖）。撤帖/隐藏回帖均为 `status=0` 软删除，后台可恢复；`cy_forum_like` 有 `(post_id, user_name)` 唯一键防重复共鸣。
 - 其它：`cy_codex` / `cy_home_section` / `cy_home_news` / `cy_site_setting` / `cy_admin_log` / 修炼相关表。
 
 ## 五、本机环境事实（已验证，勿重复探测）
@@ -106,4 +111,4 @@ cd D:\workSpace\ghost\ghost-main\cangyuantu-vue && npm run build
 - 安全提醒：bat 与指南含本地 MySQL 密码，仓库转公开前需先脱敏。
 
 ---
-*本文件在 `springBootTest\` 与 `cangyuantu-vue\` 两处各存一份，内容保持一致。最后更新：2026-11-11（修正失效路径、绑定 0.0.0.0 / CORS、注册留痕表与接口、SQL 列表、厘清 git 仓库根、仓库瘦身、同步脚本证书与提交修复）。*
+*本文件在 `springBootTest\` 与 `cangyuantu-vue\` 两处各存一份，内容保持一致。最后更新：2026-11-11（修正失效路径、绑定 0.0.0.0 / CORS、注册留痕表与接口、SQL 列表、厘清 git 仓库根、仓库瘦身、同步脚本证书与提交修复、补全论道论坛模块）。*
