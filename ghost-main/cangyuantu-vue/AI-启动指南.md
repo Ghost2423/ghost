@@ -97,11 +97,13 @@ cd D:\workSpace\ghost\ghost-main\cangyuantu-vue && npm run build
 
 ## 八、GitHub 同步（Ghost2423/ghost）
 
-- 在**项目根** `ghost-main` 双击 `sync-to-github.bat`（自动 add / commit / push；直连失败自动走代理 127.0.0.1:54311）；远程历史冲突时 `sync-to-github.bat force`。脚本 `cd /d "%~dp0"`，但 git 仓库根在上一级，`git add -A` 会覆盖整个工作树，属正常行为。
-- token 放在 `ghost-main\github-token.txt`（单行，绝不入库）；**目前该文件不存在**，需要先创建才能同步。推送后脚本会把 token 从 remote URL 移除。
-- **两层 `.gitignore`**：仓库根 `D:\workSpace\ghost\.gitignore`（IDEA / target / node_modules / dist / log 等，本来就挺完整）与项目根 `ghost-main\.gitignore`（token / 构建产物 / Vite 临时配置）。规则对**已跟踪**文件无效，所以 2026-11-11 用 `git rm -r --cached` 把 741 个历史跟踪的构建产物 + 3 个带失效路径的 Vite 临时文件移出索引（**本地文件保留、尚未提交**）。下次同步会把这些删除一起提交，仓库体积大幅缩小。
+- 在**项目根** `ghost-main` 双击 `sync-to-github.bat`（自动 add / commit / push）；远程历史冲突时 `sync-to-github.bat force`。脚本 `cd /d "%~dp0"`，但 git 仓库根在上一级，`git add -A` 覆盖整个工作树，属正常行为。
+- **直连 GitHub 是通的**（2026-11-11 实测 `git ls-remote` 返回 HEAD）。之前同步失败的根因是 Windows schannel 报 `CRYPT_E_NO_REVOCATION_CHECK`（证书吊销检查），脚本误判成网络不通而切到未监听的 54311 代理。脚本现已设 `GIT_SSL_NO_VERIFY=1` 并给 ls-remote 加 `-c http.schannelCheckRevoke=false`，**通常无需启动代理**；AI 手动验证也可用 `GIT_SSL_NO_VERIFY=1 git ls-remote origin HEAD`。
+- token 放在 `ghost-main\github-token.txt`（单行，绝不入库）；**目前该文件不存在、系统凭据管理器也无缓存**，所以推送仍需用户先放 token。脚本在成功与失败路径都会把 token 从 remote URL 抹掉。
+- 脚本另修两个静默坑：Git 身份未配置时 commit 会静默失败（现按历史作者 `Ghost2423 <Ghost2423@users.noreply.github.com>` 自动补本仓库 local 身份并显式报错）；push 失败时旧版会在 `.git/config` 残留带 token 的 URL（现统一清理）。
+- **两层 `.gitignore`**：仓库根 `D:\workSpace\ghost\.gitignore`（IDEA / target / node_modules / dist / log 等）与项目根 `ghost-main\.gitignore`（token / 构建产物 / Vite 临时配置）。规则对**已跟踪**文件无效，所以 2026-11-11 用 `git rm -r --cached` 把 741 个历史跟踪的构建产物 + Vite 临时文件移出索引（本地文件保留），并随提交 **`98cd9b0`** 落地：765 files changed、约 57 万行删除。当前工作区干净，**远程仍是 `bc25a84`、尚未推送**。
 - 索引里的路径都带 `ghost-main/` 前缀（`git ls-files --full-name` 可见）；在子目录里跑 `git status` / `git ls-files` 显示的是相对当前目录的路径，别被两种显示方式搞混。
 - 安全提醒：bat 与指南含本地 MySQL 密码，仓库转公开前需先脱敏。
 
 ---
-*本文件在 `springBootTest\` 与 `cangyuantu-vue\` 两处各存一份，内容保持一致。最后更新：2026-11-11（修正失效路径、绑定 0.0.0.0 / CORS、注册留痕表与接口、SQL 列表、厘清 git 仓库根、仓库瘦身）。*
+*本文件在 `springBootTest\` 与 `cangyuantu-vue\` 两处各存一份，内容保持一致。最后更新：2026-11-11（修正失效路径、绑定 0.0.0.0 / CORS、注册留痕表与接口、SQL 列表、厘清 git 仓库根、仓库瘦身、同步脚本证书与提交修复）。*
