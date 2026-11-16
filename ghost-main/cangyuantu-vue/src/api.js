@@ -18,6 +18,13 @@ async function request(url, options) {
     if (res.status === 403 && url.indexOf('/api/admin') === 0) {
       window.dispatchEvent(new CustomEvent('cy-admin-auth-fail', { detail: data.msg || '管理员权限已失效' }))
     }
+    // 后台写操作成功 → 广播「数据库已变更」，首页/其它视图据此重新拉数据，
+    // 保证后台改完的东西不只是存进库，界面上也立刻是最新值
+    if (data && data.ok === true && url.indexOf('/api/admin/') === 0
+        && options && options.method === 'POST'
+        && /\/(save|update|edit|delete|status|permission)(\/|$)/.test(url)) {
+      window.dispatchEvent(new CustomEvent('cy-admin-data-changed', { detail: url }))
+    }
     return data
   } catch (e) {
     return NET_FAIL
@@ -266,6 +273,30 @@ export function fetchAdminForumReplies(cred, postId) {
 /** 后台 · 隐藏回帖：POST /api/admin/forum/reply/delete */
 export function deleteAdminForumReply(cred, replyId) {
   return request('/api/admin/forum/reply/delete', jsonPost({ ...cred, reply_id: replyId }))
+}
+
+/* =============================================================
+ * 后台 · 数据编辑（所有改动真实写入 MySQL，并同步其它关联表）
+ * ============================================================= */
+
+/** 编辑用户资料：POST /api/admin/user/update {name, spell, target_id, item} */
+export function updateAdminUser(cred, targetId, item) {
+  return request('/api/admin/user/update', jsonPost({ ...cred, target_id: targetId, item }))
+}
+
+/** 编辑注册记录：POST /api/admin/register/update {name, spell, id, item}（同步用户主表与论坛作者） */
+export function updateRegisterRecord(cred, id, item) {
+  return request('/api/admin/register/update', jsonPost({ ...cred, id, item }))
+}
+
+/** 编辑论题：POST /api/admin/forum/edit {name, spell, id, item} */
+export function editAdminForumPost(cred, id, item) {
+  return request('/api/admin/forum/edit', jsonPost({ ...cred, id, item }))
+}
+
+/** 编辑回帖：POST /api/admin/forum/reply/edit {name, spell, reply_id, item} */
+export function editAdminForumReply(cred, replyId, item) {
+  return request('/api/admin/forum/reply/edit', jsonPost({ ...cred, reply_id: replyId, item }))
 }
 
 /** 统一 JSON POST 构造 */

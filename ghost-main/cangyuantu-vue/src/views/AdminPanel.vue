@@ -39,7 +39,8 @@
       </header>
 
       <div class="adm-body">
-        <component :is="current.comp" :cred="cred" :admin-id="admin.id" @toast="toast" @go="tab = $event" />
+        <component :is="current.comp" :cred="cred" :admin-id="admin.id"
+                   @toast="toast" @go="tab = $event" @self-updated="onSelfUpdated" />
       </div>
     </div>
 
@@ -48,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import OverviewTab from './admin/OverviewTab.vue'
 import CodexTab from './admin/CodexTab.vue'
 import SectionTab from './admin/SectionTab.vue'
@@ -63,7 +64,7 @@ const props = defineProps({
   // 管理员实体（来自 /api/admin/login，permission=0）
   admin: { type: Object, required: true }
 })
-const emit = defineEmits(['logout-admin', 'go-home'])
+const emit = defineEmits(['logout-admin', 'go-home', 'update-admin'])
 
 // 管理员凭证：后端每个接口都会重新校验
 const cred = computed(() => ({ name: props.admin.deity_name, spell: props.admin.spell }))
@@ -81,10 +82,16 @@ const menus = [
   { key: 'logs', icon: '✧', label: '操作日志', desc: '后台操作审计记录', tag: 'LOGS', comp: LogTab }
 ]
 
-const tab = ref('overview')
+// 当前页签也持久化：刷新后台仍停在刚才正在编辑的那一页
+const TAB_KEY = 'cy_admin_tab_v1'
+const savedTab = sessionStorage.getItem(TAB_KEY)
+const tab = ref(menus.some(m => m.key === savedTab) ? savedTab : 'overview')
+watch(tab, v => sessionStorage.setItem(TAB_KEY, v))
 const current = computed(() => menus.find(m => m.key === tab.value) || menus[0])
 
 function goHome() { emit('go-home') }
+// 管理员改了自己的账号/密码 → 通知 App 换用新凭证
+function onSelfUpdated(u) { emit('update-admin', u) }
 
 /* ===== toast ===== */
 const toastMsg = ref('')

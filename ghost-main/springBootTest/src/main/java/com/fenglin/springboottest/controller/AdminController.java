@@ -3,6 +3,7 @@ package com.fenglin.springboottest.controller;
 import com.fenglin.springboottest.common.ApiResult;
 import com.fenglin.springboottest.dto.AdminRequest;
 import com.fenglin.springboottest.entity.AvatarFoundation;
+import com.fenglin.springboottest.service.AdminDataSyncService;
 import com.fenglin.springboottest.service.AvatarFoundationService;
 import com.fenglin.springboottest.service.RegisterRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,10 @@ public class AdminController {
 
     @Autowired
     private RegisterRecordService registerRecordService;
+
+    /** 用户改动的全库同步（注册留痕 / 论坛 / 修炼数据 / 日志） */
+    @Autowired
+    private AdminDataSyncService dataSyncService;
 
     /**
      * 管理员凭证校验：账号存在、密码（明文比对）、权限为 0（管理员）。
@@ -142,6 +147,8 @@ public class AdminController {
         }
         af.setPermission(target);
         avatarService.updateById(af);
+        // 同一份权限值同步写入注册留痕，后台改完数据库里不再留旧值
+        dataSyncService.syncPermission(af.getId(), af.getDeityName(), target);
         return ResponseEntity.ok(ApiResult.ok());
     }
 
@@ -162,8 +169,12 @@ public class AdminController {
         if (af == null) {
             return ResponseEntity.status(404).body(ApiResult.fail("目标用户不存在"));
         }
-        avatarService.removeById(req.getTargetId());
-        return ResponseEntity.ok(ApiResult.ok());
+        // 级联清理：修炼状态 / 已购功法 / 切磋记录 / 共鸣记录，
+        // 并把该作者的论题与回帖标记为「已注销神尊」；注册留痕按设计保留。
+        int cleaned = dataSyncService.deleteUserCascade(req.getTargetId(), af.getDeityName());
+        Map<String, Object> r = ApiResult.ok();
+        r.put("cleaned", cleaned);
+        return ResponseEntity.ok(r);
     }
 
     /** 实体 → 后台表格行 */
@@ -173,6 +184,7 @@ public class AdminController {
         m.put("deity_name", af.getDeityName());
         m.put("region", af.getRegion());
         m.put("myth_name", af.getMythName());
+        m.put("myth_story", af.getMythStory());
         m.put("spell", af.getSpell());
         m.put("permission", af.getPermission() == null ? PERM_USER : af.getPermission());
         m.put("agreed", af.getAgreed());

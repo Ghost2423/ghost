@@ -33,7 +33,7 @@
             <th style="width:74px">置顶</th>
             <th style="width:80px">状态</th>
             <th style="width:140px">立于</th>
-            <th style="width:250px">操作</th>
+            <th style="width:300px">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -52,6 +52,7 @@
                 {{ Number(p.status) === 1 ? '展示' : '隐藏' }}</span></td>
               <td class="muted">{{ fmt(p.created_at) }}</td>
               <td class="ops">
+                <button class="adm-btn sm" @click="openEditPost(p)">编辑</button>
                 <button class="adm-btn sm" @click="togglePin(p)">
                   {{ Number(p.is_pinned) === 1 ? '取消置顶' : '置顶' }}</button>
                 <button class="adm-btn sm" :class="Number(p.status) === 1 ? 'danger' : ''" @click="toggleStatus(p)">
@@ -74,6 +75,7 @@
                   <b style="width:110px;flex-shrink:0">{{ r.author_alias || r.author_name }}</b>
                   <span style="flex:1;color:#c7d4e8;font-size:12.5px;line-height:1.7;white-space:pre-wrap">{{ r.content }}</span>
                   <span class="muted" style="width:130px;flex-shrink:0">{{ fmt(r.created_at) }}</span>
+                  <button class="adm-btn sm" @click="openEditReply(r, p)">编辑</button>
                   <button class="adm-btn sm danger" :disabled="Number(r.status) === 0" @click="hideReply(r, p)">
                     {{ Number(r.status) === 0 ? '已隐藏' : '隐藏' }}</button>
                 </div>
@@ -89,27 +91,59 @@
       <button class="adm-btn sm" :disabled="page <= 1" @click="goPage(page - 1)">‹ 上一页</button>
       <button class="adm-btn sm" :disabled="page >= pages" @click="goPage(page + 1)">下一页 ›</button>
     </div>
+
+    <!-- ===== 编辑论题 / 回帖（保存直接写 cy_forum_post / cy_forum_reply） ===== -->
+    <transition name="adm-fade">
+      <div class="adm-modal" v-if="editing" @click.self="editing = null">
+        <div class="adm-modal-card" style="max-width:600px">
+          <h3>{{ editing.kind === 'post' ? '编辑论题' : '编辑回帖' }} · #{{ editing.data.id }}</h3>
+          <p style="font-size:12px;color:#9fb0c8;line-height:1.7;margin:6px 0 14px">
+            保存直接写入数据库，前台论道坛立即读取到新内容；本次修改同时记入操作日志。
+          </p>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <label class="ef" v-if="editing.kind === 'post'"><span>板块</span>
+              <select class="adm-input" v-model="f.category">
+                <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+              </select></label>
+            <label class="ef" v-if="editing.kind === 'post'"><span>论题标题</span>
+              <input class="adm-input" v-model="f.title" /></label>
+            <label class="ef"><span>{{ editing.kind === 'post' ? '论题正文' : '回帖正文' }}</span>
+              <textarea class="adm-input" v-model="f.content" rows="6" style="resize:vertical"></textarea></label>
+          </div>
+          <div class="adm-modal-ops">
+            <button class="adm-btn" @click="editing = null">取消</button>
+            <button class="adm-btn primary solid" :disabled="busy" @click="saveEdit">
+              {{ busy ? '保存中…' : '保存到数据库' }}</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </section>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import {
-  fetchAdminForum, updateAdminForum, fetchAdminForumReplies, deleteAdminForumReply
+  fetchAdminForum, updateAdminForum, fetchAdminForumReplies, deleteAdminForumReply,
+  editAdminForumPost, editAdminForumReply
 } from '../../api'
 
 const props = defineProps({ cred: { type: Object, required: true } })
 const emit = defineEmits(['toast'])
 
+const categories = ['论道', '切磋', '妖情', '闲谈']
 const items = ref([])
 const total = ref(0)
 const page = ref(1)
 const pages = ref(1)
 const loading = ref(false)
+const busy = ref(false)
 const kw = ref('')
 const searchKw = ref('')
 const replyOpen = ref(null)
 const replyItems = ref([])
+const editing = ref(null)
+const f = ref({})
 
 async function load() {
   loading.value = true
@@ -152,6 +186,31 @@ async function hideReply(r, p) {
   if (d2.ok) replyItems.value = Array.isArray(d2.items) ? d2.items : []
   load()
 }
+
+function openEditPost(p) {
+  editing.value = { kind: 'post', data: p, postId: p.id }
+  f.value = { category: p.category || '论道', title: p.title || '', content: p.content || '' }
+}
+function openEditReply(r, p) {
+  editing.value = { kind: 'reply', data: r, postId: p.id }
+  f.value = { content: r.content || '' }
+}
+async function saveEdit() {
+  const ed = editing.value
+  busy.value = true
+  const d = ed.kind === 'post'
+    ? await editAdminForumPost(props.cred, ed.data.id, { ...f.value })
+    : await editAdminForumReply(props.cred, ed.data.id, { content: f.value.content })
+  busy.value = false
+  if (!d.ok) return emit('toast', d.msg || '保存失败', true)
+  emit('toast', '已保存，数据库内容已更新')
+  editing.value = null
+  if (ed.kind === 'reply' && replyOpen.value === ed.postId) {
+    const d2 = await fetchAdminForumReplies(props.cred, ed.postId)
+    if (d2.ok) replyItems.value = Array.isArray(d2.items) ? d2.items : []
+  }
+  load()
+}
 function tagOf(c) {
   return { '论道': 'gold', '切磋': 'on', '妖情': 'red', '闲谈': 'off' }[c] || ''
 }
@@ -159,3 +218,8 @@ function fmt(t) { return t ? String(t).replace('T', ' ').slice(0, 16) : '—' }
 
 onMounted(load)
 </script>
+
+<style scoped>
+.ef { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #9fb0c8; letter-spacing: .5px; }
+.ef .adm-input { width: 100%; box-sizing: border-box; }
+</style>

@@ -85,3 +85,26 @@
 后台「论道管理」页签可查看含隐藏帖的全部论题、置顶/取消、屏蔽/恢复、展开回帖并隐藏违规回帖，操作写入 `cy_admin_log`。
 
 查看数据：`SELECT * FROM cangyuan.cy_forum_post ORDER BY id DESC;`
+
+## 后台数据编辑与「一处改动、全库同步」
+
+后台不只改首页内容：用户资料、注册留痕、论道帖与回帖都能直接编辑，点「保存到数据库」即写入 MySQL。同一份数据在其它表里的副本由 `AdminDataSyncService` 在**同一个事务**内同步更新，避免主表改了、数据库里其它表还留旧值。
+
+| 新增能力 | 接口 | 写入的表 |
+| --- | --- | --- |
+| 用户管理 · 编辑资料（账号 / 密码 / 地域 / 名号 / 故事 / 权限 / 誓约） | `POST /api/admin/user/update` | `avatar_foundation` + 同步关联表 |
+| 注册记录 · 编辑留痕 | `POST /api/admin/register/update` | `user_register_record` + 回写 `avatar_foundation` |
+| 论道管理 · 编辑论题（板块 / 标题 / 正文） | `POST /api/admin/forum/edit` | `cy_forum_post` |
+| 论道管理 · 编辑回帖正文 | `POST /api/admin/forum/reply/edit` | `cy_forum_reply` |
+
+**同步规则**
+
+- 改账号：同步 `user_register_record.account`、`cy_forum_post/reply.author_name`、`cy_forum_like.user_name`、`cy_admin_log.admin_name`（共鸣表有唯一键，改名前会先清理重复项）
+- 改地域 / 密码 / 名号 / 故事 / 权限 / 誓约：同步 `user_register_record` 对应列；「设为管理员 / 取消管理员」也会同步权限列
+- 改神尊名号：论坛里沿用旧名号作展示名的帖与回帖一并更新
+- 删除用户：级联清理 `user_cultivation`、`user_gongfa`、`spar_log`、`cy_forum_like`，该作者的论题与回帖保留但标记为「已注销神尊」；注册留痕按设计保留
+- 每次编辑都写入一条 `cy_admin_log`；任一步失败整体回滚
+
+**刷新不丢、改完即生效**：后台登录态与当前页签存在 `sessionStorage`，刷新后仍停在原页；后台写库成功后广播 `cy-admin-data-changed`，切回首页会重新拉取数据库最新值。管理员改自己的账号或密码时，控制台立即换用新凭证，不会被 403 踢出。
+
+改过 Java 代码后需运行 `springBootTest\start-backend.bat rebuild` 重新打包再启动；仅改前端代码由 Vite 热更新，无需重启后端。

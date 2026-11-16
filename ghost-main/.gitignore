@@ -1,9 +1,11 @@
 # GitHub token（同步脚本读取，严禁入库）
 github-token.txt
 
-# 运行日志，不入库
+# 运行日志与启动标记，不入库
 springBootTest/log/
 springBootTest/backend-run.log
+springBootTest/backend-err.log
+springBootTest/backend-start.txt
 
 # 构建产物与依赖（体积极大，禁止入库；同步脚本 git add -A 会自动跳过）
 node_modules/
