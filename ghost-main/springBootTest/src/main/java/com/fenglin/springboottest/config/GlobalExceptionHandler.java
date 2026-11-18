@@ -1,6 +1,7 @@
 package com.fenglin.springboottest.config;
 
 import com.fenglin.springboottest.common.ApiResult;
+import com.fenglin.springboottest.service.impl.BoardGameServiceImpl;
 import com.fenglin.springboottest.service.impl.CultivationServiceImpl;
 import com.fenglin.springboottest.service.impl.ForumServiceImpl;
 import org.springframework.dao.DuplicateKeyException;
@@ -26,6 +27,12 @@ public class GlobalExceptionHandler {
     /** 修炼系统业务异常（铜币不足 / 神尊力不足 / 次数用尽等） */
     @ExceptionHandler(CultivationServiceImpl.CultivationException.class)
     public ResponseEntity<Map<String, Object>> onCultivation(CultivationServiceImpl.CultivationException e) {
+        return ResponseEntity.badRequest().body(ApiResult.fail(e.getMessage()));
+    }
+
+    /** 太虚弈局桌游业务异常（铜币不足 / 次数用尽 / 无进行中对局等） */
+    @ExceptionHandler(BoardGameServiceImpl.BoardGameException.class)
+    public ResponseEntity<Map<String, Object>> onBoardGame(BoardGameServiceImpl.BoardGameException e) {
         return ResponseEntity.badRequest().body(ApiResult.fail(e.getMessage()));
     }
 

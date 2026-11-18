@@ -12,6 +12,9 @@ node_modules/
 target/
 dist/
 
+# 本地浏览器预览截图（验证用，不入库）
+preview/
+
 # 编辑器 / Vite 临时文件
 .vite/
 vite.config.js.timestamp-*.mjs

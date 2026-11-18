@@ -353,3 +353,32 @@ export function breakthroughRealm(cred) {
     body: JSON.stringify({ ...cred })
   })
 }
+
+/* =============================================================
+ * 太虚弈局（桌游）API（掷骰走格，获得铜币与神尊力）
+ * ============================================================= */
+
+/** 桌游状态总览：GET /api/boardgame/status?name=xx -> {ok, boardgame} */
+export function fetchBoardGame(name) {
+  return request('/api/boardgame/status?name=' + encodeURIComponent(name))
+}
+
+/** 历史战绩：GET /api/boardgame/history?name=xx -> {ok, history} */
+export function fetchBoardGameHistory(name) {
+  return request('/api/boardgame/history?name=' + encodeURIComponent(name))
+}
+
+/** 开局：POST /api/boardgame/start {name, spell}（扣报名费） */
+export function startBoardGame(cred) {
+  return request('/api/boardgame/start', jsonPost({ ...cred }))
+}
+
+/** 掷骰一步：POST /api/boardgame/roll {name, spell}（结算收益入库） */
+export function rollBoardGame(cred) {
+  return request('/api/boardgame/roll', jsonPost({ ...cred }))
+}
+
+/** 排行榜：GET /api/boardgame/rank -> {ok, by_wins, by_copper} */
+export function fetchBoardGameRank() {
+  return request('/api/boardgame/rank')
+}

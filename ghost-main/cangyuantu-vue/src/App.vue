@@ -15,12 +15,20 @@
       @logout="onLogout"
       @open-admin="openAdmin"
       @open-cultivation="openCultivation"
+      @open-boardgame="openBoardGame"
       @open-forum="openForum"
     />
 
     <!-- 修炼殿（修炼系统：境界/神尊力/秘境/切磋/功法阁） -->
     <CultivationPanel
       v-else-if="view === 'cultivation'"
+      :avatar="avatar"
+      @go-home="backToHome"
+    />
+
+    <!-- 太虚弈局（桌游：掷骰走格，获得铜币与神尊力） -->
+    <BoardGamePanel
+      v-else-if="view === 'boardgame'"
       :avatar="avatar"
       @go-home="backToHome"
     />
@@ -62,12 +70,13 @@ import AdminLogin from './components/AdminLogin.vue'
 import HomePage from './views/HomePage.vue'
 import AdminPanel from './views/AdminPanel.vue'
 import CultivationPanel from './views/CultivationPanel.vue'
+import BoardGamePanel from './views/BoardGamePanel.vue'
 import ForumPanel from './views/ForumPanel.vue'
 
 /* ===== 会话持久化：刷新页面不丢登录态、不丢后台位置 =====
  * 只存当前标签页（sessionStorage，关掉标签即清除）；管理员凭证按项目约定明文存储。 */
 const SESSION_KEY = 'cy_session_v1'
-const VALID_VIEWS = ['auth', 'home', 'cultivation', 'forum', 'admin-login', 'admin']
+const VALID_VIEWS = ['auth', 'home', 'cultivation', 'boardgame', 'forum', 'admin-login', 'admin']
 function readSession() {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}') || {} } catch (e) { return {} }
 }
@@ -89,7 +98,7 @@ const homeKey = ref(0)
 
 // 恢复的视图必须有对应身份，否则退回登录页
 if (view.value === 'admin' && !admin.value) view.value = 'auth'
-if (['home', 'cultivation', 'forum'].includes(view.value) && !avatar.value) view.value = 'auth'
+if (['home', 'cultivation', 'boardgame', 'forum'].includes(view.value) && !avatar.value) view.value = 'auth'
 
 watch([view, avatar, admin, mode], () => {
   try {
@@ -127,6 +136,11 @@ function openAdmin() {
 // 首页「修炼」菜单 → 进入修炼殿（游客已被首页拦截，不会到达此处）
 function openCultivation() {
   view.value = 'cultivation'
+}
+
+// 首页「太虚弈局」菜单 → 进入桌游（游客已被首页拦截，不会到达此处）
+function openBoardGame() {
+  view.value = 'boardgame'
 }
 
 // 首页「论道论坛」菜单 → 进入论道坛（游客可浏览，写操作由前端与后端双重拦截）

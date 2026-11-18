@@ -182,7 +182,7 @@ import { ref, computed, onMounted } from 'vue'
 import { searchCangyuan, fetchCodex, fetchHomeConfig } from '../api'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
-const emit = defineEmits(['logout', 'open-admin', 'open-cultivation', 'open-forum'])
+const emit = defineEmits(['logout', 'open-admin', 'open-cultivation', 'open-boardgame', 'open-forum'])
 
 const root = ref(null)
 function scrollTop() { if (root.value) root.value.scrollTo({ top: 0, behavior: 'smooth' }) }
@@ -208,6 +208,7 @@ const activeMenu = ref('home')
 const menus = [
   { key: 'home', label: '首页' },
   { key: 'cultivation', label: '修炼' },
+  { key: 'boardgame', label: '太虚弈局' },
   { key: 'deity', label: '神尊殿', type: '神尊' },
   { key: 'gongfa', label: '修炼功法', type: '功法' },
   { key: 'demon', label: '妖魔图鉴', type: '妖魔' },
@@ -217,6 +218,14 @@ const menus = [
 function onMenu(m) {
   if (m.key === 'home') { clearSearch(); activeMenu.value = 'home'; scrollTop(); return }
   if (m.key === 'forum') { activeMenu.value = 'forum'; emit('open-forum'); return }
+  if (m.key === 'boardgame') {
+    // 太虚弈局需要神尊根基与铜币；游客无根基，先行拦截
+    const a = props.avatar || {}
+    if (a.isGuest) { toast('游客无根基，请先觉醒神尊'); return }
+    activeMenu.value = 'boardgame'
+    emit('open-boardgame')
+    return
+  }
   if (m.key === 'cultivation') {
     // 修炼殿需要神尊根基（数据库记录）；游客无根基，先行拦截
     const a = props.avatar || {}
