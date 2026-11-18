@@ -40,6 +40,9 @@ public class BoardGameLog {
     /** 是否通关：1=通关 0=未通关 */
     private Integer pass;
 
+    /** 镇厄符护盾：1=本局免疫下一次劫难 */
+    private Integer ward;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime finishedAt;
@@ -62,6 +65,8 @@ public class BoardGameLog {
     public void setGainPower(Integer gainPower) { this.gainPower = gainPower; }
     public Integer getPass() { return pass; }
     public void setPass(Integer pass) { this.pass = pass; }
+    public Integer getWard() { return ward; }
+    public void setWard(Integer ward) { this.ward = ward; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

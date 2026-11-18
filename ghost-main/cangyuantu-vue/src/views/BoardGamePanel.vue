@@ -1,8 +1,7 @@
 <template>
   <div class="boardgame" ref="root">
-    <div class="embers">
-      <i v-for="(e, i) in embers" :key="i" :style="e"></i>
-    </div>
+    <!-- 水墨 drifting 墨点 -->
+    <div class="ink-drift"><i v-for="(e, i) in motes" :key="i" :style="e"></i></div>
 
     <!-- ===== 顶部栏 ===== -->
     <header class="nav">
@@ -11,23 +10,20 @@
           <div class="seal">弈</div>
           <div class="brand-txt">
             <b>太虚弈局</b>
-            <span>TAI XU YI JU · 桌游</span>
+            <span>TAI XU YI JU · 水墨棋枰</span>
           </div>
         </div>
         <nav class="crumbs">
-          <a @click="$emit('go-home')">首页</a>
-          <span class="sep">›</span>
-          <span class="cur">太虚弈局</span>
+          <a @click="$emit('go-home')">首页</a><span class="sep">›</span><span class="cur">太虚弈局</span>
         </nav>
         <div class="nav-right" v-if="bg && bg.asset">
-          <span class="pill power">⚡ 神尊力 {{ bg.asset.power }}</span>
-          <span class="pill copper">◉ 铜币 {{ bg.asset.copper }}</span>
-          <button class="back" @click="$emit('go-home')">‹ 返回首页</button>
+          <span class="pill power">⚡ {{ bg.asset.power }}</span>
+          <span class="pill copper">◉ {{ bg.asset.copper }}</span>
+          <button class="back" @click="$emit('go-home')">‹ 返回</button>
         </div>
       </div>
     </header>
 
-    <!-- 加载/异常态 -->
     <section class="loading" v-if="!bg">
       <div class="loading-mark">◇</div>
       <p>{{ loadMsg }}</p>
@@ -35,192 +31,252 @@
     </section>
 
     <template v-if="bg">
-      <!-- ===== 状态条 ===== -->
-      <section class="statusbar">
-        <div class="sb-item">
-          <span class="sb-ico">◈</span>
-          <div><b>{{ bg.daily_left }}</b><small>今日余局 / {{ bg.daily_limit }}</small></div>
-        </div>
-        <div class="sb-item">
-          <span class="sb-ico">◉</span>
-          <div><b>{{ bg.entry_fee }}</b><small>入局报名铜币</small></div>
-        </div>
-        <div class="sb-item">
-          <span class="sb-ico">♛</span>
-          <div><b>{{ bg.total_won }}</b><small>累计登顶 / {{ bg.total_played }} 局</small></div>
-        </div>
-        <div class="sb-item">
-          <span class="sb-ico">⚄</span>
-          <div><b>{{ bg.max_rolls }}</b><small>每局最多掷骰</small></div>
-        </div>
-      </section>
+      <!-- ===== 模式切换 ===== -->
+      <div class="mode-tabs">
+        <button :class="{ on: mode === 'solo' }" @click="mode = 'solo'">
+          <span class="mt-ico">⚄</span><span>独弈 · 太虚棋局</span>
+        </button>
+        <button :class="{ on: mode === 'pvp' }" @click="switchPvp">
+          <span class="mt-ico">⚔</span><span>擂台 · 论剑争锋</span>
+        </button>
+      </div>
 
-      <!-- ===== 主区：棋盘 + 操作 ===== -->
-      <main class="arena">
-        <section class="board-wrap">
-          <div class="board-head">
-            <h2>太虚棋局</h2>
-            <span>掷骰行棋 · 落格得宝 · 登临神位</span>
-          </div>
-
-          <div class="board">
-            <div v-for="cell in bg.board" :key="cell.index"
-                 class="cell"
-                 :class="['t-' + cell.type.toLowerCase(), {
-                   here: cur && cur.position === cell.index,
-                   finish: cell.type === 'FINISH'
-                 }]">
-              <span class="cell-idx">{{ cell.index }}</span>
-              <span class="cell-icon">{{ cell.icon }}</span>
-              <span class="cell-name">{{ cell.name }}</span>
-              <span class="cell-gain" v-if="cell.copper">◉{{ cell.copper }}</span>
-              <span class="cell-gain pw" v-if="cell.power">⚡{{ cell.power }}</span>
-              <span class="pawn" v-if="cur && cur.position === cell.index">我</span>
-            </div>
-          </div>
-
-          <!-- 图例 -->
-          <div class="legend">
-            <span><i class="dot c-copper"></i>铜币</span>
-            <span><i class="dot c-power"></i>神尊力</span>
-            <span><i class="dot c-boon"></i>双得</span>
-            <span><i class="dot c-fortune"></i>福缘</span>
-            <span><i class="dot c-peril"></i>劫难</span>
-            <span><i class="dot c-finish"></i>终点</span>
-          </div>
+      <!-- ============ 单人弈局 ============ -->
+      <template v-if="mode === 'solo'">
+        <section class="statusbar">
+          <div class="sb-item"><span class="sb-ico">◈</span><div><b>{{ bg.daily_left }}</b><small>今日余局 / {{ bg.daily_limit }}</small></div></div>
+          <div class="sb-item"><span class="sb-ico">◉</span><div><b>{{ bg.entry_fee }}</b><small>入局报名铜币</small></div></div>
+          <div class="sb-item"><span class="sb-ico">♛</span><div><b>{{ bg.total_won }}</b><small>累计登顶 / {{ bg.total_played }} 局</small></div></div>
+          <div class="sb-item"><span class="sb-ico">⚄</span><div><b>{{ bg.max_rolls }}</b><small>每局最多掷骰</small></div></div>
         </section>
 
-        <!-- 操作面板 -->
-        <aside class="side">
-          <div class="side-card play-card">
-            <template v-if="cur && cur.status === 'playing'">
-              <div class="play-head">
-                <span class="live-dot"></span> 对局进行中
-              </div>
-              <div class="play-progress">
-                <div class="pp-bar"><i :style="{ width: Math.round(cur.position / (bg.board_size - 1) * 100) + '%' }"></i></div>
-                <div class="pp-meta">
-                  <span>第 {{ cur.rolls }} / {{ bg.max_rolls }} 掷</span>
-                  <span>距神位 {{ Math.max(0, bg.board_size - 1 - cur.position) }} 格</span>
-                </div>
-              </div>
-              <div class="dice" :class="{ rolling: rolling }">{{ rolling ? '⚄' : diceFace }}</div>
-              <button class="big-btn" :disabled="busy || rolling" @click="doRoll">
-                {{ rolling ? '骰子转动中…' : '掷 骰 行 棋' }}
-              </button>
-              <p class="play-tip">本局已得 ◉{{ cur.gain_copper }} 铜币 · ⚡{{ cur.gain_power }} 神尊力</p>
-            </template>
-
-            <template v-else>
-              <div class="play-head ready">太虚弈局</div>
-              <p class="intro">
-                掷骰行棋，落格即可收获铜币与神尊力；抵达终点「登临神位」通关，
-                另得 <b>◉150 铜币</b> 与 <b>⚡100 神尊力</b> 大奖。
-              </p>
-              <p class="cost-line">入局需 <b>◉ {{ bg.entry_fee }} 铜币</b> 报名</p>
-              <button class="big-btn" :disabled="busy || bg.daily_left <= 0 || bg.asset.copper < bg.entry_fee"
-                      @click="doStart">
-                {{ bg.daily_left <= 0 ? '今日次数已尽' : (bg.asset.copper < bg.entry_fee ? '铜币不足' : '入 局 开 弈') }}
-              </button>
-              <p class="play-tip">每局最多 {{ bg.max_rolls }} 次掷骰 · 每日 {{ bg.daily_limit }} 局</p>
-            </template>
-          </div>
-
-          <!-- 最近一掷结果 -->
-          <transition name="pop">
-            <div class="side-card result-card" v-if="lastRoll">
-              <div class="rc-head">上一掷 · {{ lastRoll.dice }} 点</div>
-              <div class="rc-body">
-                <span class="rc-cell">{{ lastRoll.cell_icon }} {{ lastRoll.cell_name }}</span>
-                <span class="rc-gains">
-                  <em v-if="lastRoll.gain_copper" :class="lastRoll.gain_copper < 0 ? 'minus' : ''">
-                    {{ lastRoll.gain_copper > 0 ? '+' : '' }}{{ lastRoll.gain_copper }} 铜币
-                  </em>
-                  <em v-if="lastRoll.gain_power" :class="lastRoll.gain_power < 0 ? 'minus' : ''">
-                    {{ lastRoll.gain_power > 0 ? '+' : '' }}{{ lastRoll.gain_power }} 神尊力
-                  </em>
-                  <em v-if="!lastRoll.gain_copper && !lastRoll.gain_power">无事发生</em>
-                </span>
+        <main class="arena">
+          <section class="board-wrap">
+            <div class="board-head">
+              <h2>太虚棋局</h2>
+              <span>掷骰行棋 · 落格得宝 · 登临神位</span>
+            </div>
+            <div class="board">
+              <div v-for="cell in bg.board" :key="cell.index" class="cell"
+                   :class="['t-' + cell.type.toLowerCase(), { here: cur && cur.position === cell.index, finish: cell.type === 'FINISH' }]">
+                <span class="cell-idx">{{ cell.index }}</span>
+                <span class="cell-icon">{{ cell.icon }}</span>
+                <span class="cell-name">{{ cell.name }}</span>
+                <span class="cell-gain" v-if="cell.copper">◉{{ cell.copper }}</span>
+                <span class="cell-gain pw" v-if="cell.power">⚡{{ cell.power }}</span>
+                <span class="pawn" v-if="cur && cur.position === cell.index">我</span>
               </div>
             </div>
-          </transition>
+            <div class="legend">
+              <span><i class="dot c-copper"></i>铜币</span><span><i class="dot c-power"></i>神尊力</span>
+              <span><i class="dot c-boon"></i>双得</span><span><i class="dot c-fortune"></i>福缘</span>
+              <span><i class="dot c-item"></i>道具</span><span><i class="dot c-peril"></i>劫难</span>
+              <span><i class="dot c-finish"></i>终点</span>
+            </div>
+          </section>
 
-          <!-- 战绩 -->
-          <div class="side-card history-card">
-            <div class="hc-head">近期战绩</div>
-            <ul v-if="bg.history && bg.history.length">
-              <li v-for="g in bg.history.slice(0, 6)" :key="g.id">
-                <span class="hc-mark" :class="{ win: g.pass }">{{ g.pass ? '♛' : '·' }}</span>
-                <span class="hc-info">{{ g.pass ? '登临神位' : '行棋未竟' }} · {{ g.rolls }} 掷</span>
-                <span class="hc-gain">◉{{ g.gain_copper }} ⚡{{ g.gain_power }}</span>
+          <aside class="side">
+            <div class="side-card play-card">
+              <template v-if="cur && cur.status === 'playing'">
+                <div class="play-head"><span class="live-dot"></span> 对局进行中</div>
+                <div class="play-progress">
+                  <div class="pp-bar"><i :style="{ width: Math.round(cur.position / (bg.board_size - 1) * 100) + '%' }"></i></div>
+                  <div class="pp-meta"><span>第 {{ cur.rolls }} / {{ bg.max_rolls }} 掷</span><span>距神位 {{ Math.max(0, bg.board_size - 1 - cur.position) }} 格</span></div>
+                </div>
+                <div class="dice" :class="{ rolling: rolling }">{{ rolling ? '⚄' : diceFace }}</div>
+                <button class="big-btn" :disabled="busy || rolling" @click="doRoll">{{ rolling ? '骰子转动中…' : '掷 骰 行 棋' }}</button>
+                <p class="play-tip">本局已得 ◉{{ cur.gain_copper }} · ⚡{{ cur.gain_power }}<span v-if="cur.ward"> · 🛡护体</span></p>
+              </template>
+              <template v-else>
+                <div class="play-head ready">太虚弈局</div>
+                <p class="intro">掷骰行棋，落格收获铜币与神尊力；抵达「登临神位」通关，另得 <b>◉150</b> 与 <b>⚡100</b> 大奖。棋局中有「奇珍阁」「元初宝匣」道具格，可拾取道具。</p>
+                <p class="cost-line">入局需 <b>◉ {{ bg.entry_fee }} 铜币</b> 报名</p>
+                <button class="big-btn" :disabled="busy || bg.daily_left <= 0 || bg.asset.copper < bg.entry_fee" @click="doStart">
+                  {{ bg.daily_left <= 0 ? '今日次数已尽' : (bg.asset.copper < bg.entry_fee ? '铜币不足' : '入 局 开 弈') }}
+                </button>
+                <p class="play-tip">每局最多 {{ bg.max_rolls }} 掷 · 每日 {{ bg.daily_limit }} 局</p>
+              </template>
+            </div>
+
+            <!-- 道具背包 -->
+            <div class="side-card item-card">
+              <div class="item-head"><span>🎒 乾坤囊</span><small>落道具格可得 · 点击使用</small></div>
+              <div class="item-grid">
+                <button v-for="it in myItems" :key="it.key" class="item-chip" :class="{ empty: !it.cnt }"
+                        :disabled="!it.cnt || busy" @click="doUseItem(it.key)" :title="it.desc">
+                  <span class="ic">{{ it.icon }}</span>
+                  <span class="nm">{{ it.name }}</span>
+                  <span class="ct">×{{ it.cnt }}</span>
+                </button>
+              </div>
+            </div>
+
+            <transition name="pop">
+              <div class="side-card result-card" v-if="lastRoll">
+                <div class="rc-head">上一掷 · {{ lastRoll.dice }} 点<template v-if="lastRoll.item_name"> · 得 {{ lastRoll.item_name }}</template><template v-if="lastRoll.ward_used"> · 🛡抵消劫难</template></div>
+                <div class="rc-body">
+                  <span class="rc-cell">{{ lastRoll.cell_icon }} {{ lastRoll.cell_name }}</span>
+                  <span class="rc-gains">
+                    <em v-if="lastRoll.gain_copper" :class="lastRoll.gain_copper < 0 ? 'minus' : ''">{{ lastRoll.gain_copper > 0 ? '+' : '' }}{{ lastRoll.gain_copper }} 铜币</em>
+                    <em v-if="lastRoll.gain_power" :class="lastRoll.gain_power < 0 ? 'minus' : ''">{{ lastRoll.gain_power > 0 ? '+' : '' }}{{ lastRoll.gain_power }} 神尊力</em>
+                    <em v-if="!lastRoll.gain_copper && !lastRoll.gain_power && !lastRoll.item_name">无事发生</em>
+                  </span>
+                </div>
+              </div>
+            </transition>
+          </aside>
+        </main>
+      </template>
+
+      <!-- ============ PVP 擂台 ============ -->
+      <template v-else>
+        <section class="statusbar pvp-status">
+          <div class="sb-item"><span class="sb-ico">⚔</span><div><b>{{ pv.played || 0 }}</b><small>擂台场次 / {{ pv.wins || 0 }} 胜</small></div></div>
+          <div class="sb-item"><span class="sb-ico">◉</span><div><b>{{ pv.entry_fee || 50 }}</b><small>报名铜币 / 方</small></div></div>
+          <div class="sb-item"><span class="sb-ico">♛</span><div><b>{{ pv.win_copper || 100 }}</b><small>胜者赏赐铜币</small></div></div>
+          <div class="sb-item"><span class="sb-ico">⚡</span><div><b>{{ pv.win_power || 50 }}</b><small>胜者赏赐神尊力</small></div></div>
+        </section>
+
+        <main class="arena">
+          <section class="board-wrap">
+            <div class="board-head">
+              <h2>论剑棋枰</h2>
+              <span>双雄逐鹿 · 先登神位者胜 · 奖池归赢家</span>
+            </div>
+            <div class="board">
+              <div v-for="cell in (bg.board || [])" :key="cell.index" class="cell"
+                   :class="['t-' + cell.type.toLowerCase(), { finish: cell.type === 'FINISH' }]">
+                <span class="cell-idx">{{ cell.index }}</span>
+                <span class="cell-icon">{{ cell.icon }}</span>
+                <span class="cell-name">{{ cell.name }}</span>
+                <span class="pawn pawn-a" v-if="pvMatch && pvMatch.challenger_pos === cell.index" :class="{ mine: isChallenger }">我</span>
+                <span class="pawn pawn-b" v-if="pvMatch && pvMatch.defender_pos === cell.index" :class="{ mine: !isChallenger }" style="right:auto;left:-6px">敌</span>
+              </div>
+            </div>
+            <div class="legend"><span><i class="dot c-copper"></i>铜币</span><span><i class="dot c-power"></i>神尊力</span><span><i class="dot c-boon"></i>双得</span><span><i class="dot c-item"></i>道具</span><span><i class="dot c-peril"></i>劫难</span><span><i class="dot c-finish"></i>终点</span></div>
+          </section>
+
+          <aside class="side">
+            <!-- 进行中的对局 -->
+            <div class="side-card play-card" v-if="pvMatch && pvMatch.status === 'playing'">
+              <div class="play-head"><span class="live-dot"></span> 第 #{{ pvMatch.id }} 场 · 对战中</div>
+              <div class="duel-row">
+                <div class="duel-side" :class="{ active: pvMatch.turn === 'challenger' }">
+                  <span class="duel-name">{{ pvMatch.challenger_name }}</span>
+                  <span class="duel-pos">格 {{ pvMatch.challenger_pos }}</span>
+                  <span class="duel-roll">{{ pvMatch.challenger_rolls }} 掷</span>
+                </div>
+                <span class="duel-vs">VS</span>
+                <div class="duel-side" :class="{ active: pvMatch.turn === 'defender' }">
+                  <span class="duel-name">{{ pvMatch.defender_name }}</span>
+                  <span class="duel-pos">格 {{ pvMatch.defender_pos }}</span>
+                  <span class="duel-roll">{{ pvMatch.defender_rolls }} 掷</span>
+                </div>
+              </div>
+              <div class="turn-tip">{{ myTurn ? '轮到你了' : (pvMatch.defender_ai ? '天道正在推演…' : '静待对手行棋') }}</div>
+              <div class="dice small" :class="{ rolling: pvpRolling }">{{ pvpRolling ? '⚄' : pvpDice }}</div>
+              <button class="big-btn" :disabled="pvpBusy || !myTurn" @click="doPvpRoll">{{ !myTurn ? '待对手行棋…' : '掷 骰 论 剑' }}</button>
+              <p class="play-tip">奖池 ◉{{ pvMatch.pot }} · 胜者得 ◉{{ pv.entry_fee * 2 }} + 赏赐</p>
+            </div>
+
+            <!-- 创建挑战 -->
+            <div class="side-card play-card" v-else>
+              <div class="play-head ready">擂台论剑</div>
+              <p class="intro">发起挑战需 <b>◉{{ pv.entry_fee }} 铜币</b>，天道或对手同注，奖池归胜者。先抵达「登临神位」者获胜。</p>
+              <label class="field-label">挑战方式</label>
+              <div class="pv-opts">
+                <button :class="{ on: versusAi }" @click="versusAi = true">🤖 天道·无极</button>
+                <button :class="{ on: !versusAi }" @click="versusAi = false">👤 指名道友</button>
+              </div>
+              <input v-if="!versusAi" class="name-input" v-model="opponentName" placeholder="输入对手神尊名号" />
+              <button class="big-btn" :disabled="pvpBusy || bg.asset.copper < (pv.entry_fee || 50)" @click="doPvpCreate">
+                {{ bg.asset.copper < (pv.entry_fee || 50) ? '铜币不足' : '发 起 挑 战' }}
+              </button>
+              <p class="play-tip">每日限 {{ pv.daily_limit || 5 }} 场 · 挑战后即刻入库</p>
+            </div>
+
+            <!-- 道具背包（PVP） -->
+            <div class="side-card item-card">
+              <div class="item-head"><span>🎒 乾坤囊</span><small>点击使用于当前对局</small></div>
+              <div class="item-grid">
+                <button v-for="it in myItems" :key="it.key" class="item-chip" :class="{ empty: !it.cnt }"
+                        :disabled="!it.cnt || pvpBusy || !pvMatch || pvMatch.status !== 'playing'" @click="doPvpUseItem(it.key)" :title="it.desc">
+                  <span class="ic">{{ it.icon }}</span><span class="nm">{{ it.name }}</span><span class="ct">×{{ it.cnt }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 可应战列表 -->
+            <div class="side-card" v-if="challengeList.length">
+              <div class="hc-head">可应战 · 悬赏榜</div>
+              <ul class="chal-list">
+                <li v-for="c in challengeList" :key="c.id">
+                  <span class="chal-name">⚔ {{ c.challenger_name }}</span>
+                  <span class="chal-pot">◉{{ c.pot }}</span>
+                  <button @click="doPvpAccept(c.id)">应战</button>
+                </li>
+              </ul>
+            </div>
+          </aside>
+        </main>
+
+        <!-- PVP 战绩 -->
+        <section class="extras pvp-extras">
+          <div class="block">
+            <div class="block-head"><span class="bh-icon">⚔</span><h2>我的战绩</h2><span class="bh-line"></span></div>
+            <div class="pvp-record">
+              <div><b>{{ pv.played || 0 }}</b><span>总场次</span></div>
+              <div><b>{{ pv.wins || 0 }}</b><span>胜场</span></div>
+            </div>
+            <ul class="pvp-history" v-if="pvMatches.length">
+              <li v-for="m in pvMatches.slice(0,6)" :key="m.id">
+                <span>{{ m.challenger_name }} <em>vs</em> {{ m.defender_name }}</span>
+                <span class="ph-res" :class="{ win: winnerIsMe(m) }">{{ m.status === 'finished' ? (winnerIsMe(m) ? '胜' : '负') : '进行中' }}</span>
               </li>
             </ul>
-            <p class="hc-empty" v-else>尚无战绩，入局开弈</p>
+            <p class="rank-empty" v-else>尚无擂台战绩，发起挑战一试身手</p>
           </div>
-        </aside>
-      </main>
+        </section>
+      </template>
 
       <!-- ===== 成就 + 排行榜 ===== -->
-      <main class="extras" v-if="bg">
+      <main class="extras" v-if="mode === 'solo'">
         <section class="block achieve-block">
-          <div class="block-head">
-            <span class="bh-icon">✧</span>
-            <h2>成就殿堂</h2>
-            <span class="bh-line"></span>
-            <span class="bh-tip">行棋问道，步步留痕</span>
-          </div>
+          <div class="block-head"><span class="bh-icon">✧</span><h2>成就殿堂</h2><span class="bh-line"></span><span class="bh-tip">行棋问道，步步留痕</span></div>
           <div class="badge-grid">
-            <div v-for="a in bg.achievements" :key="a.name" class="badge"
-                 :class="{ locked: !a.unlocked }">
+            <div v-for="a in bg.achievements" :key="a.name" class="badge" :class="{ locked: !a.unlocked }">
               <span class="badge-mark">{{ a.unlocked ? '✦' : '◇' }}</span>
-              <div class="badge-info">
-                <b>{{ a.name }}</b>
-                <small>{{ a.desc }}</small>
-              </div>
+              <div class="badge-info"><b>{{ a.name }}</b><small>{{ a.desc }}</small></div>
               <span class="badge-state">{{ a.unlocked ? '已达成' : '未解锁' }}</span>
             </div>
           </div>
         </section>
-
         <section class="block rank-block">
-          <div class="block-head">
-            <span class="bh-icon">♛</span>
-            <h2>太虚榜</h2>
-            <span class="bh-line"></span>
-            <span class="bh-tip">群雄逐鹿，谁登神位</span>
-          </div>
+          <div class="block-head"><span class="bh-icon">♛</span><h2>太虚榜</h2><span class="bh-line"></span><span class="bh-tip">群雄逐鹿，谁登神位</span></div>
           <div class="rank-tabs">
             <button :class="{ on: rankTab === 'wins' }" @click="rankTab = 'wins'">登顶榜</button>
             <button :class="{ on: rankTab === 'copper' }" @click="rankTab = 'copper'">财富榜</button>
+            <button :class="{ on: rankTab === 'pvp' }" @click="rankTab = 'pvp'">擂台榜</button>
           </div>
           <div class="rank-list" v-if="rankRows.length">
-            <div v-for="(r, i) in rankRows" :key="r.name + i" class="rank-row" :class="'rk-' + (i + 1)">
+            <div v-for="(r, i) in rankRows" :key="(r.name || '') + i" class="rank-row" :class="'rk-' + (i + 1)">
               <span class="rk-no">{{ i < 3 ? ['♛','♞','♜'][i] : (i + 1) }}</span>
               <span class="rk-name">{{ r.name }}</span>
               <span class="rk-stat" v-if="rankTab === 'wins'">{{ r.wins }} 次登顶</span>
+              <span class="rk-stat" v-else-if="rankTab === 'pvp'">{{ r.wins || 0 }} 胜 / {{ r.plays || 0 }} 场</span>
               <span class="rk-stat" v-else>{{ r.copper }} 铜币</span>
-              <span class="rk-gain">⚡{{ r.power }} · ◉{{ r.copper }}</span>
+              <span class="rk-gain">⚡{{ r.power != null ? r.power : '—' }} · ◉{{ r.copper != null ? r.copper : '—' }}</span>
             </div>
           </div>
           <p class="rank-empty" v-else>榜上无名，入局一较高下</p>
         </section>
       </main>
 
-      <footer class="foot">沧元图 · 太虚弈局 —— 掷骰问道 · 落格得宝 · 登临神位</footer>
+      <footer class="foot">沧元图 · 太虚弈局 —— 泼墨为枰 · 掷骰问道 · 落格得宝</footer>
     </template>
 
     <!-- 通关特效 -->
-    <transition name="fade">
-      <div class="win-flash" v-if="winFx">
-        <div class="wf-card">
-          <div class="wf-glow"></div>
-          <p class="wf-crown">♛</p>
-          <p class="wf-title">登 临 神 位</p>
-          <p class="wf-sub">本局收获</p>
-          <p class="wf-gain">◉ {{ winFx.gain_copper }} 铜币　⚡ {{ winFx.gain_power }} 神尊力</p>
-        </div>
-      </div>
-    </transition>
+    <transition name="fade"><div class="win-flash" v-if="winFx"><div class="wf-card"><div class="wf-glow"></div><p class="wf-crown">♛</p><p class="wf-title">{{ winFx.title || '登 临 神 位' }}</p><p class="wf-sub">{{ winFx.sub || '本局收获' }}</p><p class="wf-gain">◉ {{ winFx.gain_copper }} 铜币　⚡ {{ winFx.gain_power }} 神尊力</p></div></div></transition>
 
     <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </div>
@@ -228,24 +284,20 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchBoardGame, startBoardGame, rollBoardGame, fetchBoardGameRank } from '../api'
+import {
+  fetchBoardGame, startBoardGame, rollBoardGame, fetchBoardGameRank,
+  fetchBoardItems, useBoardItem, fetchPvpStatus, fetchPvpList, createPvp, acceptPvp, rollPvp
+} from '../api'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
 defineEmits(['go-home'])
 
-const root = ref(null)
-
-const palette = ['#2dd4bf', '#e9c46a', '#ef4454', '#5eead4', '#ffffff']
-const embers = Array.from({ length: 18 }, () => {
-  const c = palette[Math.floor(Math.random() * palette.length)]
-  const size = 2 + Math.random() * 3
+const motes = Array.from({ length: 16 }, () => {
+  const size = 2 + Math.random() * 4
   return {
     left: (Math.random() * 100).toFixed(2) + '%',
-    background: c,
-    boxShadow: `0 0 8px ${c}`,
-    width: size + 'px',
-    height: size + 'px',
-    animation: `rise linear infinite ${(7 + Math.random() * 8).toFixed(2)}s ${(-Math.random() * 10).toFixed(2)}s`
+    width: size + 'px', height: size + 'px',
+    animation: `drift linear infinite ${(12 + Math.random() * 12).toFixed(2)}s ${(-Math.random() * 14).toFixed(2)}s`
   }
 })
 
@@ -254,41 +306,81 @@ const busy = ref(false)
 const rolling = ref(false)
 const diceFace = ref('⚄')
 const loadFailed = ref(false)
-const loadMsg = ref('正在推演棋局…')
+const loadMsg = ref('正在铺开棋枰…')
 const lastRoll = ref(null)
 const winFx = ref(null)
 const rank = ref(null)
 const rankTab = ref('wins')
+const mode = ref('solo')
+
+// PVP 状态
+const pv = ref({})               // pvp/status 返回内容
+const pvMatches = ref([])
+const challengeList = ref([])
+const pvMatch = computed(() => pv.value && pv.value.current)
+const isChallenger = computed(() => {
+  const a = props.avatar || {}
+  return !!(pvMatch.value && pvMatch.value.challenger_name === a.deity_name)
+})
+const myTurn = computed(() => {
+  const m = pvMatch.value
+  if (!m) return false
+  return isChallenger.value ? m.turn === 'challenger' : m.turn === 'defender'
+})
+const pvpBusy = ref(false)
+const pvpRolling = ref(false)
+const pvpDice = ref('⚄')
+const versusAi = ref(true)
+const opponentName = ref('')
 
 const cur = computed(() => bg.value && bg.value.current)
+const myItems = computed(() => (bg.value && bg.value.items) || [])
 const rankRows = computed(() => {
   if (!rank.value) return []
   if (rankTab.value === 'wins') return rank.value.by_wins || []
+  if (rankTab.value === 'pvp') return rank.value.by_pvp || []
   return (rank.value.by_copper || []).map(r => ({ ...r, wins: '—' }))
 })
 
-function cred() {
-  const a = props.avatar || {}
-  return { name: a.deity_name, spell: a.spell }
-}
+function cred() { const a = props.avatar || {}; return { name: a.deity_name, spell: a.spell } }
 
 async function load() {
   const a = props.avatar || {}
   if (!a.deity_name) { loadMsg.value = '游客无根基，请先觉醒神尊'; loadFailed.value = true; return }
   loadFailed.value = false
-  loadMsg.value = '正在推演棋局…'
+  loadMsg.value = '正在铺开棋枰…'
   bg.value = null
   const d = await fetchBoardGame(a.deity_name)
-  if (d && d.ok && d.boardgame) {
-    bg.value = d.boardgame
-  } else {
-    loadFailed.value = true
-    loadMsg.value = (d && d.msg) || '无法连接元界（后端未启动？）'
-  }
+  if (d && d.ok && d.boardgame) bg.value = d.boardgame
+  else { loadFailed.value = true; loadMsg.value = (d && d.msg) || '无法连接元界（后端未启动？）'; return }
   const r = await fetchBoardGameRank()
   if (r && r.ok) rank.value = r
+  await loadPvp(false)
 }
 onMounted(load)
+
+async function loadPvp(loadList = true) {
+  const name = (props.avatar || {}).deity_name
+  if (!name) return
+  const s = await fetchPvpStatus(name)
+  if (s && s.ok) {
+    pv.value = s
+    pvMatches.value = s.matches || []
+    if (bg.value) { bg.value.asset = s.asset; bg.value.items = s.items }
+  }
+  if (loadList) {
+    const l = await fetchPvpList(name)
+    if (l && l.ok) challengeList.value = l.list || []
+  }
+}
+async function switchPvp() { mode.value = 'pvp'; await loadPvp(true) }
+
+async function refreshAll() {
+  const name = (props.avatar || {}).deity_name
+  const s = await fetchBoardGame(name)
+  if (s && s.ok && s.boardgame) bg.value = s.boardgame
+  await loadPvp(true)
+}
 
 async function doStart() {
   if (busy.value) return
@@ -300,253 +392,312 @@ async function doStart() {
     bg.value.current = d.game
     lastRoll.value = null
     toast(d.resumed ? '继续未完的弈局' : '入局开弈，掷骰问道')
-    const s = await fetchBoardGame((props.avatar || {}).deity_name)
-    if (s && s.ok && s.boardgame) bg.value = s.boardgame
+    await refreshAll()
   } else toast(d.msg || '入局失败')
 }
 
 async function doRoll() {
   if (busy.value || rolling.value) return
-  busy.value = true
-  rolling.value = true
-  // 骰子翻滚动画
-  const faces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
+  busy.value = true; rolling.value = true
+  const faces = ['⚀','⚁','⚂','⚃','⚄','⚅']
   let ticks = 0
-  const timer = setInterval(() => {
-    diceFace.value = faces[Math.floor(Math.random() * 6)]
-    ticks++
-    if (ticks > 14) clearInterval(timer)
-  }, 70)
-
+  const timer = setInterval(() => { diceFace.value = faces[Math.floor(Math.random()*6)]; if (++ticks > 14) clearInterval(timer) }, 70)
   const d = await rollBoardGame(cred())
-  await new Promise(r => setTimeout(r, 900))
-  clearInterval(timer)
-  rolling.value = false
-  busy.value = false
-
+  await new Promise(r => setTimeout(r, 850))
+  clearInterval(timer); rolling.value = false; busy.value = false
   if (d.ok) {
     diceFace.value = faces[(d.dice || 1) - 1]
     lastRoll.value = d
-    if (d.asset) bg.value.asset = d.asset
-    if (d.game) bg.value.current = d.game
+    await refreshAll()
     if (d.pass === 1) {
-      winFx.value = { gain_copper: d.game.gain_copper, gain_power: d.game.gain_power }
-      setTimeout(() => { winFx.value = null }, 3000)
+      winFx.value = { title: '登 临 神 位', sub: '本局收获', gain_copper: d.game.gain_copper, gain_power: d.game.gain_power }
+      setTimeout(() => { winFx.value = null }, 2800)
     }
     const g = d.gain_copper ? `${d.gain_copper > 0 ? '+' : ''}${d.gain_copper} 铜币 ` : ''
     const p = d.gain_power ? `${d.gain_power > 0 ? '+' : ''}${d.gain_power} 神尊力` : ''
-    toast(d.finished
-      ? (d.pass === 1 ? '登临神位！' : '行棋已尽')
-      : `掷出 ${d.dice} 点，落「${d.cell_name}」${g ? ' ' + g : ''}${p ? ' ' + p : ''}`)
-    const s = await fetchBoardGame((props.avatar || {}).deity_name)
-    if (s && s.ok && s.boardgame) bg.value = s.boardgame
-  } else {
-    toast(d.msg || '掷骰失败')
-  }
+    const item = d.item_name ? ` 得【${d.item_name}】` : ''
+    toast(d.finished ? (d.pass === 1 ? '登临神位！' : '行棋已尽') : `掷出 ${d.dice} 点，落「${d.cell_name}」${g}${p}${item}`)
+  } else toast(d.msg || '掷骰失败')
 }
 
-const toastMsg = ref('')
-const toastShow = ref(false)
-let toastTimer = null
+async function doUseItem(key) {
+  if (busy.value) return
+  busy.value = true
+  const d = await useBoardItem({ ...cred(), item_key: key })
+  busy.value = false
+  if (d.ok) { toast(d.msg); await refreshAll() }
+  else toast(d.msg || '使用失败')
+}
+
+/* ===== PVP 操作 ===== */
+async function doPvpCreate() {
+  if (pvpBusy.value) return
+  pvpBusy.value = true
+  const payload = { ...cred(), versus_ai: versusAi.value }
+  if (!versusAi.value) {
+    if (!opponentName.value.trim()) { toast('请输入对手名号'); pvpBusy.value = false; return }
+    payload.opponent_name = opponentName.value.trim()
+  }
+  const d = await createPvp(payload)
+  pvpBusy.value = false
+  if (d.ok) { toast(d.msg); await loadPvp(true) }
+  else toast(d.msg || '发起失败')
+}
+async function doPvpAccept(id) {
+  if (pvpBusy.value) return
+  pvpBusy.value = true
+  const d = await acceptPvp({ ...cred(), match_id: id })
+  pvpBusy.value = false
+  if (d.ok) { toast(d.msg); await loadPvp(true) }
+  else toast(d.msg || '应战失败')
+}
+async function doPvpRoll() {
+  if (pvpBusy.value || pvpRolling.value || !pvMatch.value) return
+  pvpBusy.value = true; pvpRolling.value = true
+  const faces = ['⚀','⚁','⚂','⚃','⚄','⚅']
+  let ticks = 0
+  const timer = setInterval(() => { pvpDice.value = faces[Math.floor(Math.random()*6)]; if (++ticks > 14) clearInterval(timer) }, 70)
+  const d = await rollPvp({ ...cred(), match_id: pvMatch.value.id })
+  await new Promise(r => setTimeout(r, 850))
+  clearInterval(timer); pvpRolling.value = false; pvpBusy.value = false
+  if (d.ok) {
+    await loadPvp(true)
+    toast(d.msg)
+    if (d.finished) {
+      winFx.value = {
+        title: d.win ? '擂 台 得 胜' : '惜 败 擂 台',
+        sub: d.win ? '奖池与赏赐已入囊' : '来日再战',
+        gain_copper: d.win ? (pv.value.win_copper || 0) + (pv.value.entry_fee || 0) : 0,
+        gain_power: d.win ? (pv.value.win_power || 0) : 0
+      }
+      setTimeout(() => { winFx.value = null }, 2800)
+    }
+  } else toast(d.msg || '掷骰失败')
+}
+async function doPvpUseItem(key) {
+  if (pvpBusy.value || !pvMatch.value) return
+  pvpBusy.value = true
+  const d = await useBoardItem({ ...cred(), item_key: key, match_id: pvMatch.value.id })
+  pvpBusy.value = false
+  if (d.ok) { toast(d.msg); await loadPvp(true) }
+  else toast(d.msg || '使用失败')
+}
+function winnerIsMe(m) {
+  const a = props.avatar || {}
+  const myName = a.deity_name
+  return (m.winner === 'challenger' && m.challenger_name === myName)
+      || (m.winner === 'defender' && m.defender_name === myName)
+}
+
+const toastMsg = ref(''); const toastShow = ref(false); let toastTimer = null
 function toast(msg) {
-  toastMsg.value = msg
-  toastShow.value = true
+  toastMsg.value = msg; toastShow.value = true
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toastShow.value = false }, 3000)
 }
 </script>
 
 <style scoped>
+/* ========== 水墨风基调 ========== */
 .boardgame{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;
   background:
-    radial-gradient(120% 80% at 80% 0%,rgba(233,196,106,.10),transparent 55%),
-    radial-gradient(100% 90% at 10% 100%,rgba(45,212,191,.10),transparent 55%),
-    linear-gradient(180deg,var(--ink2),var(--ink) 70%);
+    radial-gradient(90% 60% at 12% 4%,rgba(120,140,132,.10),transparent 60%),
+    radial-gradient(80% 70% at 92% 96%,rgba(180,58,46,.07),transparent 60%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0,rgba(255,255,255,.012) 1px,transparent 1px,transparent 4px),
+    linear-gradient(180deg,#101310,#0b0d0b 72%);
   color:var(--text)}
-.embers{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.embers i{position:absolute;bottom:-10px;border-radius:50%;opacity:0}
-@keyframes rise{0%{transform:translateY(0) scale(1);opacity:0}10%{opacity:.9}90%{opacity:.5}100%{transform:translateY(-105vh) scale(.4);opacity:0}}
+.boardgame::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background:radial-gradient(60% 40% at 80% 12%,rgba(232,226,208,.05),transparent 70%),radial-gradient(50% 40% at 10% 80%,rgba(232,226,208,.04),transparent 70%)}
+.ink-drift{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.ink-drift i{position:absolute;bottom:-10px;border-radius:50%;background:rgba(190,180,160,.5);opacity:0}
+@keyframes drift{0%{transform:translateY(0) translateX(0);opacity:0}10%{opacity:.5}50%{transform:translateY(-55vh) translateX(30px)}90%{opacity:.25}100%{transform:translateY(-108vh) translateX(-20px);opacity:0}}
 
-.nav{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,rgba(7,11,22,.92),rgba(7,11,22,.62));
-  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.nav{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,rgba(12,15,12,.94),rgba(12,15,12,.66));
+  backdrop-filter:blur(14px);border-bottom:1px solid rgba(232,226,208,.14);box-shadow:0 8px 30px rgba(0,0,0,.4)}
 .nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:26px;padding:14px 26px}
 .brand{display:flex;align-items:center;gap:12px;cursor:pointer;flex-shrink:0}
-.seal{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--jade),#0f766e);
-  display:grid;place-items:center;font-weight:900;color:#04130f;font-size:20px;box-shadow:0 0 22px rgba(45,212,191,.5)}
-.brand-txt b{font-size:18px;letter-spacing:4px;font-weight:900;display:block}
-.brand-txt span{font-size:11px;color:var(--muted);letter-spacing:2px}
-.crumbs{display:flex;align-items:center;gap:10px;flex:1;font-size:13px;letter-spacing:1px}
-.crumbs a{color:var(--muted);cursor:pointer;transition:.15s}
-.crumbs a:hover{color:var(--jade)}
-.crumbs .sep{color:var(--line)}
-.crumbs .cur{color:var(--gold)}
+.seal{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,#b33930,#8d2820);
+  display:grid;place-items:center;font-weight:900;color:#f5efe0;font-size:20px;
+  border:1px solid rgba(245,239,224,.35);box-shadow:0 0 18px rgba(179,57,48,.4);font-family:"STKaiti","KaiTi",serif}
+.brand-txt b{font-size:18px;letter-spacing:4px;font-weight:900;display:block;color:#e8e2d0;font-family:"STKaiti","KaiTi",serif}
+.brand-txt span{font-size:10px;color:#8a8f86;letter-spacing:2px}
+.crumbs{display:flex;align-items:center;gap:10px;flex:1;font-size:13px;letter-spacing:1px;color:#8a8f86}
+.crumbs a{cursor:pointer;transition:.15s}.crumbs a:hover{color:#c9a227}.crumbs .sep{color:#4a4f48}.crumbs .cur{color:#c9a227}
 .nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.pill{padding:6px 14px;border-radius:999px;font-size:13px;letter-spacing:1px;font-weight:700;border:1px solid var(--line)}
-.pill.power{color:var(--jade);background:rgba(45,212,191,.10)}
-.pill.copper{color:var(--gold);background:rgba(233,196,106,.10);border-color:rgba(233,196,106,.4)}
-.back{padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:none;color:var(--muted);
-  cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:2px;transition:.15s}
-.back:hover{color:var(--jade);border-color:var(--jade)}
+.pill{padding:6px 14px;border-radius:999px;font-size:13px;letter-spacing:1px;font-weight:700;border:1px solid rgba(232,226,208,.16)}
+.pill.power{color:#8fb7a8;background:rgba(120,150,135,.10)}
+.pill.copper{color:#d9b45a;background:rgba(201,162,39,.10);border-color:rgba(201,162,39,.35)}
+.back{padding:6px 14px;border:1px solid rgba(232,226,208,.18);border-radius:999px;background:none;color:#8a8f86;cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:2px;transition:.15s}
+.back:hover{color:#c9a227;border-color:#c9a227}
 
-.loading{text-align:center;padding:120px 26px;color:var(--muted);position:relative;z-index:2}
-.loading-mark{font-size:54px;color:var(--line);margin-bottom:14px}
-.loading p{letter-spacing:2px;line-height:2}
-.retry{margin-top:18px;padding:8px 22px;border:1px solid var(--line);border-radius:999px;background:none;
-  color:var(--jade);cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:2px}
+.loading{text-align:center;padding:120px 26px;color:#8a8f86;position:relative;z-index:2}
+.loading-mark{font-size:54px;color:#4a4f48;margin-bottom:14px}.loading p{letter-spacing:2px;line-height:2}
+.retry{margin-top:18px;padding:8px 22px;border:1px solid rgba(232,226,208,.2);border-radius:999px;background:none;color:#c9a227;cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:2px}
 
-.statusbar{max-width:1280px;margin:26px auto 0;padding:0 26px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;position:relative;z-index:2}
-.sb-item{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:16px;background:var(--glass);
-  border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(10px)}
-.sb-ico{font-size:24px;color:var(--jade);text-shadow:0 0 14px var(--jade)}
-.sb-item b{font-size:22px;font-weight:900;color:var(--gold);display:block;line-height:1.2}
-.sb-item small{font-size:12px;color:var(--muted);letter-spacing:1px}
+/* 模式切换 */
+.mode-tabs{max-width:1280px;margin:22px auto 0;padding:0 26px;display:flex;gap:12px;position:relative;z-index:2}
+.mode-tabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;
+  border:1px solid rgba(232,226,208,.16);border-radius:12px;background:rgba(20,24,20,.6);color:#9aa094;
+  font-family:inherit;font-size:15px;letter-spacing:3px;cursor:pointer;transition:.2s}
+.mode-tabs button:hover{border-color:rgba(201,162,39,.5);color:#d9b45a}
+.mode-tabs button.on{background:linear-gradient(135deg,rgba(179,57,48,.22),rgba(20,24,20,.6));border-color:#b33930;color:#f0e4cf;font-weight:800;box-shadow:inset 0 0 24px rgba(179,57,48,.15)}
+.mt-ico{font-size:19px}
 
-.arena{max-width:1280px;margin:22px auto 0;padding:0 26px 40px;display:grid;grid-template-columns:1fr 340px;gap:22px;position:relative;z-index:2}
-.board-wrap{padding:24px;border-radius:22px;background:linear-gradient(160deg,rgba(14,22,42,.8),rgba(7,11,22,.6));
-  border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px);box-shadow:0 22px 60px rgba(0,0,0,.45)}
-.board-head{display:flex;align-items:baseline;gap:16px;margin-bottom:20px}
-.board-head h2{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:24px;letter-spacing:4px;font-weight:900;color:var(--gold)}
-.board-head span{font-size:12px;color:var(--muted);letter-spacing:2px}
+.statusbar{max-width:1280px;margin:18px auto 0;padding:0 26px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;position:relative;z-index:2}
+.sb-item{display:flex;align-items:center;gap:14px;padding:15px 20px;border-radius:12px;background:rgba(20,24,20,.55);border:1px solid rgba(232,226,208,.12)}
+.sb-ico{font-size:23px;color:#8fb7a8;text-shadow:0 0 12px rgba(143,183,168,.5)}
+.sb-item b{font-size:21px;font-weight:900;color:#d9b45a;display:block;line-height:1.2;font-family:"STKaiti","KaiTi",serif}
+.sb-item small{font-size:11px;color:#8a8f86;letter-spacing:1px}
 
-.board{display:grid;grid-template-columns:repeat(8,1fr);gap:10px}
-.cell{position:relative;min-height:104px;border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:3px;background:rgba(7,11,22,.6);border:1px solid rgba(255,255,255,.10);
-  transition:.25s;overflow:hidden}
-.cell::before{content:"";position:absolute;inset:0;opacity:.10}
-.cell.t-copper::before{background:var(--gold)}
-.cell.t-power::before{background:var(--jade)}
-.cell.t-boon::before{background:linear-gradient(135deg,var(--jade),var(--gold))}
-.cell.t-fortune::before{background:#a78bfa}
-.cell.t-peril::before{background:var(--crimson)}
-.cell.t-finish{background:linear-gradient(135deg,rgba(233,196,106,.22),rgba(233,196,106,.05));border-color:rgba(233,196,106,.6)}
-.cell.t-start{background:rgba(45,212,191,.10)}
-.cell:not(.here):hover{transform:translateY(-2px);border-color:rgba(255,255,255,.28)}
-.cell.here{transform:translateY(-6px) scale(1.03);border-color:var(--jade);
-  box-shadow:0 0 0 2px var(--jade),0 0 30px rgba(45,212,191,.5),0 14px 34px rgba(45,212,191,.3);z-index:3}
-.cell-idx{position:absolute;top:6px;left:8px;font-size:10px;color:var(--muted);opacity:.7}
-.cell-icon{font-size:26px;line-height:1;text-shadow:0 0 12px currentColor}
-.t-copper .cell-icon,.t-finish .cell-icon{color:var(--gold)}
-.t-power .cell-icon,.t-start .cell-icon{color:var(--jade)}
-.t-boon .cell-icon{color:#5eead4}
-.t-fortune .cell-icon{color:#c4b5fd}
-.t-peril .cell-icon{color:#f87171}
-.cell-name{font-size:12px;letter-spacing:1px;color:var(--text);font-weight:700}
-.cell-gain{font-size:11px;color:var(--gold)}
-.cell-gain.pw{color:var(--jade)}
-.pawn{position:absolute;top:-8px;right:-6px;width:24px;height:24px;border-radius:50%;
-  background:linear-gradient(135deg,var(--crimson),#b91c1c);color:#fff;font-size:11px;font-weight:900;
-  display:grid;place-items:center;box-shadow:0 0 16px rgba(239,68,84,.7);animation:pawnPulse 1.3s ease-in-out infinite}
+.arena{max-width:1280px;margin:18px auto 0;padding:0 26px 30px;display:grid;grid-template-columns:1fr 340px;gap:20px;position:relative;z-index:2}
+.board-wrap{padding:24px;border-radius:14px;background:linear-gradient(160deg,rgba(232,226,208,.055),rgba(20,24,20,.7));
+  border:1px solid rgba(232,226,208,.14);box-shadow:0 22px 60px rgba(0,0,0,.4)}
+.board-head{display:flex;align-items:baseline;gap:16px;margin-bottom:18px}
+.board-head h2{font-family:"STKaiti","KaiTi",serif;font-size:25px;letter-spacing:5px;font-weight:900;color:#e8e2d0}
+.board-head span{font-size:12px;color:#8a8f86;letter-spacing:2px}
+
+.board{display:grid;grid-template-columns:repeat(8,1fr);gap:9px}
+.cell{position:relative;min-height:102px;border-radius:8px;padding:9px 5px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;background:rgba(16,19,16,.85);border:1px solid rgba(232,226,208,.12);transition:.25s;overflow:hidden}
+.cell::after{content:"";position:absolute;inset:0;opacity:.07;pointer-events:none}
+.cell.t-copper::after{background:#d9b45a}.cell.t-power::after{background:#8fb7a8}
+.cell.t-boon::after{background:linear-gradient(135deg,#8fb7a8,#d9b45a)}
+.cell.t-fortune::after{background:#b39ddb}.cell.t-item::after{background:#c56b5a}
+.cell.t-peril::after{background:#b33930}
+.cell.t-finish{background:linear-gradient(135deg,rgba(201,162,39,.20),rgba(16,19,16,.85));border-color:rgba(201,162,39,.55)}
+.cell.t-start{background:rgba(143,183,168,.10)}
+.cell:not(.here):hover{transform:translateY(-2px);border-color:rgba(232,226,208,.3)}
+.cell.here{transform:translateY(-6px) scale(1.03);border-color:#c9a227;box-shadow:0 0 0 2px #c9a227,0 0 28px rgba(201,162,39,.35),0 14px 34px rgba(0,0,0,.4);z-index:3}
+.cell-idx{position:absolute;top:5px;left:7px;font-size:10px;color:#8a8f86;opacity:.7}
+.cell-icon{font-size:24px;line-height:1;text-shadow:0 0 10px currentColor}
+.t-copper .cell-icon,.t-finish .cell-icon{color:#d9b45a}.t-power .cell-icon,.t-start .cell-icon{color:#8fb7a8}
+.t-boon .cell-icon{color:#a8d5c4}.t-fortune .cell-icon{color:#c9b6f0}.t-item .cell-icon{color:#e08d7d}.t-peril .cell-icon{color:#e07a72}
+.cell-name{font-size:12px;letter-spacing:1px;color:#e0dccf;font-weight:700;font-family:"STKaiti","KaiTi",serif}
+.cell-gain{font-size:11px;color:#d9b45a}.cell-gain.pw{color:#8fb7a8}
+.pawn{position:absolute;top:-8px;right:-6px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#b33930,#8d2820);
+  color:#fff;font-size:11px;font-weight:900;display:grid;place-items:center;box-shadow:0 0 14px rgba(179,57,48,.7);animation:pawnPulse 1.3s ease-in-out infinite;font-family:"STKaiti","KaiTi",serif}
+.pawn-a{background:linear-gradient(135deg,#b33930,#8d2820)}.pawn-a.mine{box-shadow:0 0 0 2px #f0e4cf,0 0 16px rgba(179,57,48,.8)}
+.pawn-b{background:linear-gradient(135deg,#3f4a44,#222a25);box-shadow:0 0 14px rgba(0,0,0,.6)}.pawn-b.mine{box-shadow:0 0 0 2px #f0e4cf,0 0 16px rgba(143,183,168,.6)}
 @keyframes pawnPulse{50%{transform:scale(1.15)}}
 
-.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:18px;padding-top:14px;border-top:1px dashed var(--line)}
-.legend span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);letter-spacing:1px}
+.legend{display:flex;flex-wrap:wrap;gap:15px;margin-top:16px;padding-top:13px;border-top:1px dashed rgba(232,226,208,.16)}
+.legend span{display:flex;align-items:center;gap:6px;font-size:11px;color:#8a8f86;letter-spacing:1px}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-.c-copper{background:var(--gold)}.c-power{background:var(--jade)}.c-boon{background:linear-gradient(135deg,var(--jade),var(--gold))}
-.c-fortune{background:#a78bfa}.c-peril{background:var(--crimson)}.c-finish{background:#f7f3e8}
+.c-copper{background:#d9b45a}.c-power{background:#8fb7a8}.c-boon{background:linear-gradient(135deg,#8fb7a8,#d9b45a)}
+.c-fortune{background:#b39ddb}.c-item{background:#c56b5a}.c-peril{background:#b33930}.c-finish{background:#e8e2d0}
 
-.side{display:flex;flex-direction:column;gap:16px}
-.side-card{padding:20px;border-radius:18px;background:var(--glass);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(12px)}
+.side{display:flex;flex-direction:column;gap:14px}
+.side-card{padding:19px;border-radius:12px;background:rgba(20,24,20,.6);border:1px solid rgba(232,226,208,.12)}
 .play-card{text-align:center}
-.play-head{font-size:15px;letter-spacing:3px;font-weight:900;color:var(--jade);margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px}
-.play-head.ready{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:22px;color:var(--gold)}
-.live-dot{width:8px;height:8px;border-radius:50%;background:var(--jade);box-shadow:0 0 10px var(--jade);animation:pawnPulse 1.3s infinite}
-.play-progress{margin-bottom:14px}
-.pp-bar{height:9px;border-radius:999px;background:rgba(7,11,22,.8);border:1px solid var(--line);overflow:hidden}
-.pp-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--jade-deep),var(--jade),#5eead4);transition:width .5s}
-.pp-meta{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--muted);letter-spacing:1px}
-.dice{font-size:72px;line-height:1.1;color:var(--gold);text-shadow:0 0 30px rgba(233,196,106,.6),0 0 60px rgba(233,196,106,.25);margin:6px 0;
-  filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
-.dice.rolling{animation:shake .2s linear infinite}
+.play-head{font-size:14px;letter-spacing:3px;font-weight:800;color:#8fb7a8;margin-bottom:13px;display:flex;align-items:center;justify-content:center;gap:8px}
+.play-head.ready{font-family:"STKaiti","KaiTi",serif;font-size:21px;color:#e8e2d0}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#b33930;box-shadow:0 0 10px #b33930;animation:pawnPulse 1.3s infinite}
+.play-progress{margin-bottom:12px}.pp-bar{height:8px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(232,226,208,.14);overflow:hidden}
+.pp-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#6d8b7c,#8fb7a8,#d9b45a);transition:width .5s}
+.pp-meta{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#8a8f86;letter-spacing:1px}
+.dice{font-size:66px;line-height:1.1;color:#e8e2d0;text-shadow:0 0 24px rgba(232,226,208,.3);margin:4px 0;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+.dice.small{font-size:48px}.dice.rolling{animation:shake .2s linear infinite}
 @keyframes shake{0%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}100%{transform:rotate(-12deg)}}
-.big-btn{width:100%;margin-top:10px;padding:13px;border:none;border-radius:12px;cursor:pointer;font-family:inherit;
-  font-size:15px;font-weight:900;letter-spacing:5px;color:#04130f;background:linear-gradient(135deg,var(--jade),#5eead4);
-  box-shadow:0 10px 26px rgba(45,212,191,.35);transition:.18s}
-.big-btn:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}
-.big-btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
-.intro{font-size:13px;line-height:1.9;color:var(--muted);letter-spacing:.5px;text-align:left;margin:6px 0 12px}
-.intro b{color:var(--gold)}
-.cost-line{font-size:13px;color:var(--text);letter-spacing:1px;margin-bottom:6px}
-.cost-line b{color:var(--gold)}
-.play-tip{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:12px}
+.big-btn{width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;cursor:pointer;font-family:inherit;
+  font-size:15px;font-weight:900;letter-spacing:5px;color:#f5efe0;background:linear-gradient(135deg,#b33930,#8d2820);
+  box-shadow:0 10px 26px rgba(179,57,48,.3);transition:.18s}
+.big-btn:hover:not(:disabled){filter:brightness(1.12);transform:translateY(-1px)}
+.big-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.intro{font-size:13px;line-height:1.9;color:#9aa094;letter-spacing:.5px;text-align:left;margin:6px 0 12px}
+.intro b{color:#d9b45a}.cost-line{font-size:13px;color:#d0ccc0;letter-spacing:1px;margin-bottom:6px}.cost-line b{color:#d9b45a}
+.play-tip{font-size:11px;color:#8a8f86;letter-spacing:1px;margin-top:11px}
 
-.rc-head{font-size:12px;color:var(--jade);letter-spacing:2px;margin-bottom:10px}
-.rc-body{display:flex;flex-direction:column;gap:6px}
-.rc-cell{font-size:15px;font-weight:700;letter-spacing:1px}
-.rc-gains{display:flex;flex-wrap:wrap;gap:10px}
-.rc-gains em{font-style:normal;font-size:13px;color:var(--gold)}
-.rc-gains em.minus{color:#f87171}
-.result-card{border-color:rgba(45,212,191,.35)}
+/* 道具栏 */
+.item-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.item-head span{font-size:14px;color:#e8e2d0;letter-spacing:2px;font-family:"STKaiti","KaiTi",serif}
+.item-head small{font-size:10px;color:#8a8f86;letter-spacing:1px}
+.item-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.item-chip{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 3px;border-radius:9px;
+  border:1px solid rgba(201,162,39,.35);background:rgba(16,19,16,.7);color:#d0ccc0;cursor:pointer;transition:.18s;font-family:inherit}
+.item-chip:hover:not(:disabled){transform:translateY(-3px);border-color:#d9b45a;background:rgba(201,162,39,.10)}
+.item-chip:disabled{cursor:not-allowed}
+.item-chip.empty{opacity:.35;border-color:rgba(232,226,208,.12)}
+.item-chip .ic{font-size:21px}.item-chip .nm{font-size:10px;letter-spacing:1px;white-space:nowrap}
+.item-chip .ct{position:absolute;top:-6px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#b33930;color:#fff;font-size:10px;line-height:18px;font-weight:800}
 
-.hc-head{font-size:13px;color:var(--gold);letter-spacing:2px;margin-bottom:10px}
-.history-card ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.history-card li{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.hc-mark{width:18px;text-align:center;color:var(--muted)}
-.hc-mark.win{color:var(--gold)}
-.hc-info{flex:1}
-.hc-gain{color:var(--jade);font-size:11px;white-space:nowrap}
-.hc-empty{font-size:12px;color:var(--muted);letter-spacing:1px}
+.rc-head{font-size:11px;color:#8fb7a8;letter-spacing:1px;margin-bottom:9px}.rc-body{display:flex;flex-direction:column;gap:6px}
+.rc-cell{font-size:14px;font-weight:700;letter-spacing:1px;color:#e0dccf;font-family:"STKaiti","KaiTi",serif}
+.rc-gains{display:flex;flex-wrap:wrap;gap:9px}.rc-gains em{font-style:normal;font-size:12px;color:#d9b45a}.rc-gains em.minus{color:#e07a72}
+.result-card{border-color:rgba(143,183,168,.3)}
+.hc-head{font-size:13px;color:#d9b45a;letter-spacing:2px;margin-bottom:10px;font-family:"STKaiti","KaiTi",serif}
 
-/* ===== 成就 + 排行榜 ===== */
-.extras{max-width:1280px;margin:4px auto 0;padding:0 26px 40px;display:grid;grid-template-columns:1fr 1fr;gap:22px;position:relative;z-index:2}
-.block{padding:24px;border-radius:22px;background:linear-gradient(160deg,rgba(14,22,42,.8),rgba(7,11,22,.6));
-  border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px)}
-.block-head{display:flex;align-items:baseline;gap:14px;margin-bottom:20px}
-.bh-icon{font-size:20px;color:var(--jade);text-shadow:0 0 12px var(--jade)}
-.block-head h2{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:22px;letter-spacing:4px;font-weight:900;color:var(--gold)}
-.bh-line{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
-.bh-tip{font-size:11px;color:var(--muted);letter-spacing:1px}
+/* PVP 对战 */
+.duel-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 14px}
+.duel-side{flex:1;display:flex;flex-direction:column;gap:3px;padding:10px 6px;border-radius:9px;background:rgba(16,19,16,.7);border:1px solid rgba(232,226,208,.12);transition:.2s}
+.duel-side.active{border-color:#b33930;box-shadow:inset 0 0 18px rgba(179,57,48,.18)}
+.duel-name{font-size:12px;color:#e0dccf;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:"STKaiti","KaiTi",serif}
+.duel-pos{font-size:18px;color:#d9b45a;font-weight:900}.duel-roll{font-size:10px;color:#8a8f86}
+.duel-vs{font-size:13px;color:#8a8f86;font-weight:900;letter-spacing:1px}
+.turn-tip{font-size:11px;color:#8fb7a8;letter-spacing:2px;margin-bottom:4px}
+.field-label{display:block;text-align:left;font-size:11px;color:#8a8f86;letter-spacing:2px;margin:12px 0 6px}
+.pv-opts{display:flex;gap:8px}.pv-opts button{flex:1;padding:9px 4px;border:1px solid rgba(232,226,208,.16);border-radius:9px;background:rgba(16,19,16,.7);
+  color:#9aa094;font-family:inherit;font-size:12px;letter-spacing:1px;cursor:pointer;transition:.18s}
+.pv-opts button.on{border-color:#b33930;color:#f0e4cf;background:rgba(179,57,48,.18)}
+.name-input{width:100%;margin-top:10px;padding:10px 12px;border:1px solid rgba(232,226,208,.18);border-radius:9px;background:rgba(16,19,16,.8);
+  color:#e0dccf;font-family:inherit;font-size:13px;letter-spacing:1px;box-sizing:border-box}
+.name-input:focus{outline:none;border-color:#c9a227}
+.chal-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.chal-list li{display:flex;align-items:center;gap:8px;font-size:12px;color:#d0ccc0}
+.chal-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chal-pot{color:#d9b45a}.chal-list button{padding:4px 12px;border:1px solid #b33930;border-radius:7px;background:rgba(179,57,48,.18);color:#f0e4cf;
+  font-family:inherit;font-size:11px;letter-spacing:1px;cursor:pointer}.chal-list button:hover{background:#b33930}
 
-.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
-.badge{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:rgba(7,11,22,.55);
-  border:1px solid rgba(233,196,106,.4);transition:.2s}
-.badge:hover{transform:translateY(-3px);border-color:var(--gold)}
-.badge.locked{opacity:.45;border-color:var(--line)}
-.badge-mark{font-size:26px;color:var(--gold);text-shadow:0 0 14px rgba(233,196,106,.5)}
-.badge.locked .badge-mark{color:var(--muted);text-shadow:none}
-.badge-info{flex:1;min-width:0}
-.badge-info b{display:block;font-size:14px;letter-spacing:1px}
-.badge-info small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
-.badge-state{font-size:11px;color:var(--gold);letter-spacing:1px;white-space:nowrap}
-.badge.locked .badge-state{color:var(--muted)}
+.pvp-record{display:flex;gap:12px;margin-bottom:14px}
+.pvp-record div{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px;border-radius:10px;background:rgba(16,19,16,.7);border:1px solid rgba(232,226,208,.1)}
+.pvp-record b{font-size:26px;color:#d9b45a;font-family:"STKaiti","KaiTi",serif}.pvp-record span{font-size:11px;color:#8a8f86;letter-spacing:1px}
+.pvp-history{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.pvp-history li{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#9aa094;padding:7px 10px;border-radius:8px;background:rgba(16,19,16,.55)}
+.pvp-history em{font-style:normal;color:#6d726a;margin:0 3px}.ph-res{color:#8a8f86}.ph-res.win{color:#d9b45a;font-weight:800}
 
-.rank-tabs{display:flex;gap:8px;margin-bottom:14px}
-.rank-tabs button{flex:1;padding:8px;border:1px solid var(--line);border-radius:10px;background:rgba(7,11,22,.6);
-  color:var(--muted);font-family:inherit;font-size:13px;letter-spacing:2px;cursor:pointer;transition:.15s}
-.rank-tabs button.on{color:#04130f;background:linear-gradient(135deg,var(--jade),#5eead4);border-color:transparent;font-weight:700}
-.rank-list{display:flex;flex-direction:column;gap:7px}
-.rank-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(7,11,22,.5);
-  border:1px solid rgba(255,255,255,.06);font-size:12px;transition:.15s}
-.rank-row:hover{border-color:var(--jade);transform:translateX(3px)}
-.rank-row.rk-1{background:linear-gradient(90deg,rgba(233,196,106,.18),rgba(7,11,22,.5));border-color:rgba(233,196,106,.5)}
-.rk-no{width:26px;text-align:center;font-size:16px;color:var(--gold);font-weight:900}
-.rk-name{flex:1;color:var(--text);letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rk-stat{color:var(--jade);white-space:nowrap}
-.rk-gain{color:var(--muted);font-size:11px;white-space:nowrap}
-.rank-empty{font-size:12px;color:var(--muted);letter-spacing:1px;text-align:center;padding:20px 0}
+/* 成就 + 排行榜 */
+.extras{max-width:1280px;margin:2px auto 0;padding:0 26px 30px;display:grid;grid-template-columns:1fr 1fr;gap:20px;position:relative;z-index:2}
+.pvp-extras{grid-template-columns:1fr}
+.block{padding:23px;border-radius:14px;background:linear-gradient(160deg,rgba(232,226,208,.05),rgba(20,24,20,.7));border:1px solid rgba(232,226,208,.13)}
+.block-head{display:flex;align-items:baseline;gap:13px;margin-bottom:18px}
+.bh-icon{font-size:19px;color:#8fb7a8;text-shadow:0 0 10px rgba(143,183,168,.4)}
+.block-head h2{font-family:"STKaiti","KaiTi",serif;font-size:21px;letter-spacing:4px;font-weight:900;color:#e8e2d0}
+.bh-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(232,226,208,.2),transparent)}
+.bh-tip{font-size:11px;color:#8a8f86;letter-spacing:1px}
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:11px}
+.badge{display:flex;align-items:center;gap:11px;padding:13px;border-radius:10px;background:rgba(16,19,16,.6);border:1px solid rgba(201,162,39,.35);transition:.2s}
+.badge:hover{transform:translateY(-3px);border-color:#d9b45a}.badge.locked{opacity:.4;border-color:rgba(232,226,208,.12)}
+.badge-mark{font-size:24px;color:#d9b45a;text-shadow:0 0 12px rgba(201,162,39,.4)}.badge.locked .badge-mark{color:#6d726a;text-shadow:none}
+.badge-info{flex:1;min-width:0}.badge-info b{display:block;font-size:13px;letter-spacing:1px;color:#e0dccf}
+.badge-info small{display:block;font-size:10px;color:#8a8f86;margin-top:3px}
+.badge-state{font-size:10px;color:#d9b45a;letter-spacing:1px;white-space:nowrap}.badge.locked .badge-state{color:#8a8f86}
+.rank-tabs{display:flex;gap:7px;margin-bottom:13px}
+.rank-tabs button{flex:1;padding:8px;border:1px solid rgba(232,226,208,.16);border-radius:9px;background:rgba(16,19,16,.6);color:#9aa094;font-family:inherit;font-size:12px;letter-spacing:2px;cursor:pointer;transition:.15s}
+.rank-tabs button.on{color:#f5efe0;background:linear-gradient(135deg,#b33930,#8d2820);border-color:transparent;font-weight:700}
+.rank-list{display:flex;flex-direction:column;gap:6px}
+.rank-row{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;background:rgba(16,19,16,.5);border:1px solid rgba(232,226,208,.06);font-size:12px;transition:.15s}
+.rank-row:hover{border-color:#8fb7a8;transform:translateX(3px)}
+.rank-row.rk-1{background:linear-gradient(90deg,rgba(201,162,39,.16),rgba(16,19,16,.5));border-color:rgba(201,162,39,.45)}
+.rk-no{width:24px;text-align:center;font-size:15px;color:#d9b45a;font-weight:900}
+.rk-name{flex:1;color:#e0dccf;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk-stat{color:#8fb7a8;white-space:nowrap}.rk-gain{color:#8a8f86;font-size:10px;white-space:nowrap}
+.rank-empty{font-size:12px;color:#8a8f86;letter-spacing:1px;text-align:center;padding:20px 0}
 
-.foot{position:relative;z-index:2;text-align:center;padding:24px;font-size:12px;color:var(--muted);letter-spacing:1px;border-top:1px solid rgba(255,255,255,.06)}
+.foot{position:relative;z-index:2;text-align:center;padding:22px;font-size:11px;color:#6d726a;letter-spacing:2px;border-top:1px solid rgba(232,226,208,.08)}
 
-.win-flash{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(4,7,14,.72);backdrop-filter:blur(8px)}
-.wf-card{text-align:center;position:relative;padding:52px 76px;border-radius:24px;
-  background:linear-gradient(160deg,rgba(14,22,42,.96),rgba(7,11,22,.96));border:1px solid rgba(233,196,106,.5);animation:cardIn .5s ease both}
+.win-flash{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(6,8,6,.74);backdrop-filter:blur(8px)}
+.wf-card{text-align:center;position:relative;padding:50px 74px;border-radius:16px;background:linear-gradient(160deg,rgba(24,28,24,.97),rgba(11,13,11,.97));border:1px solid rgba(201,162,39,.5);animation:cardIn .5s ease both}
 @keyframes cardIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
-.wf-glow{position:absolute;inset:-30px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(233,196,106,.35),transparent 65%);animation:glowPulse 1.2s ease-in-out infinite}
+.wf-glow{position:absolute;inset:-30px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(201,162,39,.3),transparent 65%);animation:glowPulse 1.2s ease-in-out infinite}
 @keyframes glowPulse{50%{transform:scale(1.12);opacity:.7}}
-.wf-crown{font-size:46px;color:var(--gold);text-shadow:0 0 24px rgba(233,196,106,.7);margin:0}
-.wf-title{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:40px;font-weight:900;letter-spacing:10px;
-  background:linear-gradient(90deg,var(--gold),#fff,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;margin:8px 0}
-.wf-sub{font-size:13px;color:var(--muted);letter-spacing:3px}
-.wf-gain{font-size:17px;color:var(--gold);letter-spacing:2px;margin-top:6px}
+.wf-crown{font-size:44px;color:#d9b45a;text-shadow:0 0 22px rgba(201,162,39,.6);margin:0}
+.wf-title{font-family:"STKaiti","KaiTi",serif;font-size:38px;font-weight:900;letter-spacing:10px;background:linear-gradient(90deg,#d9b45a,#fff5df,#d9b45a);-webkit-background-clip:text;background-clip:text;color:transparent;margin:8px 0}
+.wf-sub{font-size:12px;color:#8a8f86;letter-spacing:3px}.wf-gain{font-size:16px;color:#d9b45a;letter-spacing:2px;margin-top:6px}
 
-.toast{position:fixed;left:50%;top:84px;transform:translateX(-50%) translateY(-20px);
-  background:linear-gradient(135deg,var(--jade-deep),var(--jade));color:#04130f;padding:12px 22px;border-radius:12px;
-  font-weight:700;letter-spacing:1px;opacity:0;pointer-events:none;transition:.3s;z-index:95;
-  box-shadow:0 14px 40px rgba(45,212,191,.45);max-width:80vw}
+.toast{position:fixed;left:50%;top:84px;transform:translateX(-50%) translateY(-20px);background:linear-gradient(135deg,#8d2820,#b33930);color:#f5efe0;padding:11px 22px;border-radius:10px;
+  font-weight:700;letter-spacing:1px;opacity:0;pointer-events:none;transition:.3s;z-index:95;box-shadow:0 14px 40px rgba(179,57,48,.4);max-width:80vw}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.pop-enter-active,.pop-leave-active{transition:.3s}
-.pop-enter-from,.pop-leave-to{opacity:0;transform:translateY(-8px)}
-.fade-enter-active,.fade-leave-active{transition:opacity .35s}
-.fade-enter-from,.fade-leave-to{opacity:0}
+.pop-enter-active,.pop-leave-active{transition:.3s}.pop-enter-from,.pop-leave-to{opacity:0;transform:translateY(-8px)}
+.fade-enter-active,.fade-leave-active{transition:opacity .35s}.fade-enter-from,.fade-leave-to{opacity:0}
 
 @media(max-width:1040px){.arena{grid-template-columns:1fr}.statusbar{grid-template-columns:repeat(2,1fr)}.extras{grid-template-columns:1fr}}
 @media(max-width:680px){.board{grid-template-columns:repeat(4,1fr)}.crumbs{display:none}.nav-right .pill{display:none}}

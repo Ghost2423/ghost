@@ -23,7 +23,14 @@ import java.util.Map;
  * - POST /api/boardgame/start  {name, spell}  开局（扣 30 铜币报名费）
  * - POST /api/boardgame/roll   {name, spell}  掷骰一步（服务端权威结算，收益入库）
  * - GET  /api/boardgame/history?name=  历史战绩
- * - GET  /api/boardgame/rank           排行榜（登顶榜 / 财富榜）
+ * - GET  /api/boardgame/rank           排行榜（登顶榜 / 财富榜 / PVP名将榜）
+ * - GET  /api/boardgame/items?name=    道具背包与图鉴
+ * - POST /api/boardgame/use-item       {name,spell,item_key,match_id}  使用道具
+ * - GET  /api/boardgame/pvp/status?name= PVP 状态总览
+ * - GET  /api/boardgame/pvp/list?name=   可应战挑战列表
+ * - POST /api/boardgame/pvp/create     {name,spell,opponent_name,versus_ai}  发起挑战
+ * - POST /api/boardgame/pvp/accept     {name,spell,match_id}  应战
+ * - POST /api/boardgame/pvp/roll       {name,spell,match_id}  PVP 掷骰
  *
  * 写操作以 name+spell 为凭证（与登录/修炼一致，明文比对）。
  */
@@ -99,6 +106,67 @@ public class BoardGameController {
             return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
         }
         return ResponseEntity.ok(wrap(boardGameService.roll(af)));
+    }
+
+    /* ================= 道具 ================= */
+
+    /** 道具背包（读接口） */
+    @GetMapping("/items")
+    public ResponseEntity<Map<String, Object>> items(@RequestParam("name") String name) {
+        AvatarFoundation af = avatarService.getByDeityName(name == null ? "" : name.trim());
+        if (af == null) return ResponseEntity.status(404).body(ApiResult.fail("未寻得此神尊根基"));
+        return ResponseEntity.ok(wrap(boardGameService.items(af)));
+    }
+
+    /** 使用道具 */
+    @PostMapping("/use-item")
+    public ResponseEntity<Map<String, Object>> useItem(@RequestBody BoardGameRequest req) {
+        AvatarFoundation af = requireUser(req.getName(), req.getSpell());
+        if (af == null) return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
+        return ResponseEntity.ok(wrap(boardGameService.useItem(af, req.getItemKey(), req.getMatchId())));
+    }
+
+    /* ================= PVP 擂台 ================= */
+
+    /** PVP 状态总览（读接口） */
+    @GetMapping("/pvp/status")
+    public ResponseEntity<Map<String, Object>> pvpStatus(@RequestParam("name") String name) {
+        AvatarFoundation af = avatarService.getByDeityName(name == null ? "" : name.trim());
+        if (af == null) return ResponseEntity.status(404).body(ApiResult.fail("未寻得此神尊根基"));
+        return ResponseEntity.ok(wrap(boardGameService.pvpStatus(af)));
+    }
+
+    /** 可应战列表（读接口） */
+    @GetMapping("/pvp/list")
+    public ResponseEntity<Map<String, Object>> pvpList(@RequestParam("name") String name) {
+        AvatarFoundation af = avatarService.getByDeityName(name == null ? "" : name.trim());
+        if (af == null) return ResponseEntity.status(404).body(ApiResult.fail("未寻得此神尊根基"));
+        return ResponseEntity.ok(wrap(boardGameService.pvpList(af)));
+    }
+
+    /** 发起挑战 */
+    @PostMapping("/pvp/create")
+    public ResponseEntity<Map<String, Object>> pvpCreate(@RequestBody BoardGameRequest req) {
+        AvatarFoundation af = requireUser(req.getName(), req.getSpell());
+        if (af == null) return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
+        return ResponseEntity.ok(wrap(boardGameService.pvpCreate(af, req.getOpponentName(),
+                Boolean.TRUE.equals(req.getVersusAi()))));
+    }
+
+    /** 应战 */
+    @PostMapping("/pvp/accept")
+    public ResponseEntity<Map<String, Object>> pvpAccept(@RequestBody BoardGameRequest req) {
+        AvatarFoundation af = requireUser(req.getName(), req.getSpell());
+        if (af == null) return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
+        return ResponseEntity.ok(wrap(boardGameService.pvpAccept(af, req.getMatchId())));
+    }
+
+    /** PVP 掷骰 */
+    @PostMapping("/pvp/roll")
+    public ResponseEntity<Map<String, Object>> pvpRoll(@RequestBody BoardGameRequest req) {
+        AvatarFoundation af = requireUser(req.getName(), req.getSpell());
+        if (af == null) return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
+        return ResponseEntity.ok(wrap(boardGameService.pvpRoll(af, req.getMatchId())));
     }
 
     private static Map<String, Object> wrap(Map<String, Object> result) {

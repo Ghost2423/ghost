@@ -378,7 +378,39 @@ export function rollBoardGame(cred) {
   return request('/api/boardgame/roll', jsonPost({ ...cred }))
 }
 
-/** 排行榜：GET /api/boardgame/rank -> {ok, by_wins, by_copper} */
+/** 排行榜：GET /api/boardgame/rank -> {ok, by_wins, by_copper, by_pvp} */
 export function fetchBoardGameRank() {
   return request('/api/boardgame/rank')
+}
+
+/* ===== 道具 ===== */
+/** 道具背包与图鉴：GET /api/boardgame/items?name=xx */
+export function fetchBoardItems(name) {
+  return request('/api/boardgame/items?name=' + encodeURIComponent(name))
+}
+/** 使用道具：POST /api/boardgame/use-item {name, spell, item_key, match_id?} */
+export function useBoardItem(payload) {
+  return request('/api/boardgame/use-item', jsonPost(payload))
+}
+
+/* ===== PVP 擂台 ===== */
+/** PVP 状态总览：GET /api/boardgame/pvp/status?name=xx */
+export function fetchPvpStatus(name) {
+  return request('/api/boardgame/pvp/status?name=' + encodeURIComponent(name))
+}
+/** 可应战列表：GET /api/boardgame/pvp/list?name=xx */
+export function fetchPvpList(name) {
+  return request('/api/boardgame/pvp/list?name=' + encodeURIComponent(name))
+}
+/** 发起挑战：POST /api/boardgame/pvp/create */
+export function createPvp(payload) {
+  return request('/api/boardgame/pvp/create', jsonPost(payload))
+}
+/** 应战：POST /api/boardgame/pvp/accept */
+export function acceptPvp(payload) {
+  return request('/api/boardgame/pvp/accept', jsonPost(payload))
+}
+/** PVP 掷骰：POST /api/boardgame/pvp/roll */
+export function rollPvp(payload) {
+  return request('/api/boardgame/pvp/roll', jsonPost(payload))
 }
