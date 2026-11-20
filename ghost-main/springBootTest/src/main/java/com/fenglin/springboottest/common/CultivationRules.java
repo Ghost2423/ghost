@@ -28,7 +28,8 @@ import java.util.Map;
  * 称号：突破到「暗星」境获得 封侯神尊；突破到「无间」境获得 封王神尊（更高覆盖）
  *
  * 秘境修炼：每次消耗 50 铜币；凡俗境界一次得 50 神尊力，神尊境界一次得 100 神尊力；每日 20 次
- * 切磋：双方各得 20 神尊力 + 15 铜币
+ * 切磋：双方各得 30 神尊力 + 300 铜币
+ * 首页卡片首阅：每张卡片每账号首次点开 +50 铜币（记录于 user_card_view，唯一键防重复）
  */
 public final class CultivationRules {
 
@@ -71,8 +72,12 @@ public final class CultivationRules {
     public static final int SECRET_GAIN_DEITY = 100;
 
     /* ===== 切磋 ===== */
-    public static final int SPAR_GAIN_POWER = 20;
-    public static final int SPAR_GAIN_COPPER = 15;
+    public static final int SPAR_GAIN_POWER = 30;
+    public static final int SPAR_GAIN_COPPER = 300;
+
+    /* ===== 首页卡片首阅 ===== */
+    /** 每张卡片每账号首次点开奖励的铜币 */
+    public static final int CARD_VIEW_REWARD_COPPER = 50;
 
     /* ===== 初始资产 ===== */
     public static final int INIT_COPPER = 200;

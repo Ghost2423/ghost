@@ -48,6 +48,7 @@ public class HomeController {
         m.put("desc", e.getDescription());
         m.put("flavor", e.getFlavor());
         m.put("color", e.getColor());
+        m.put("image", e.getImage());
         m.put("price", e.getPrice());
         m.put("power_gain", e.getPowerGain());
         return m;

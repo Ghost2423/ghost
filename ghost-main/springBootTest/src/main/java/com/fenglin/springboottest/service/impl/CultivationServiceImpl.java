@@ -5,9 +5,11 @@ import com.fenglin.springboottest.common.CultivationRules;
 import com.fenglin.springboottest.entity.AvatarFoundation;
 import com.fenglin.springboottest.entity.CodexEntry;
 import com.fenglin.springboottest.entity.SparLog;
+import com.fenglin.springboottest.entity.UserCardView;
 import com.fenglin.springboottest.entity.UserCultivation;
 import com.fenglin.springboottest.entity.UserGongfa;
 import com.fenglin.springboottest.mapper.SparLogMapper;
+import com.fenglin.springboottest.mapper.UserCardViewMapper;
 import com.fenglin.springboottest.mapper.UserCultivationMapper;
 import com.fenglin.springboottest.mapper.UserGongfaMapper;
 import com.fenglin.springboottest.service.AvatarFoundationService;
@@ -40,6 +42,9 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Autowired
     private SparLogMapper sparLogMapper;
+
+    @Autowired
+    private UserCardViewMapper cardViewMapper;
 
     @Autowired
     private AvatarFoundationService avatarService;
@@ -291,6 +296,50 @@ public class CultivationServiceImpl implements CultivationService {
         r.put("title", uc.getTitle());
         r.put("cultivation", buildStatus(af, uc));
         return r;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> viewCard(AvatarFoundation af, String cardKey, String cardName) {
+        if (cardKey == null || cardKey.isBlank()) {
+            throw new CultivationException("缺少卡片标识");
+        }
+        String key = cardKey.trim();
+        UserCardView rec = new UserCardView();
+        rec.setUserId(af.getId());
+        rec.setCardKey(key);
+        rec.setCardName(cardName == null ? null : cardName.trim());
+
+        // 唯一键 (user_id, card_key) 保证每账号每张卡只奖励一次：
+        // 插入成功 = 首次浏览；撞唯一键 = 已浏览过，直接跳过奖励。
+        boolean first;
+        try {
+            cardViewMapper.insert(rec);
+            first = true;
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            first = false;
+        }
+
+        UserCultivation uc = getOrInit(af.getId());
+        if (first) {
+            int copper = uc.getCopper() == null ? 0 : uc.getCopper();
+            uc.setCopper(copper + CultivationRules.CARD_VIEW_REWARD_COPPER);
+            cultivationMapper.updateById(uc);
+        }
+
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("first_view", first);
+        r.put("reward", first ? CultivationRules.CARD_VIEW_REWARD_COPPER : 0);
+        r.put("card_key", key);
+        r.put("cultivation", buildStatus(af, uc));
+        return r;
+    }
+
+    @Override
+    public List<String> viewedCards(Long userId) {
+        return cardViewMapper.selectList(
+                        new QueryWrapper<UserCardView>().eq("user_id", userId).select("card_key"))
+                .stream().map(UserCardView::getCardKey).collect(Collectors.toList());
     }
 
     /** 修炼系统业务异常（由全局异常处理器转为 {ok:false,msg}） */

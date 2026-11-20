@@ -2,20 +2,29 @@ package com.fenglin.springboottest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.fenglin.springboottest.common.CultivationRules;
 import com.fenglin.springboottest.entity.AdminLog;
 import com.fenglin.springboottest.entity.AvatarFoundation;
+import com.fenglin.springboottest.entity.BoardGameLog;
+import com.fenglin.springboottest.entity.BoardItem;
+import com.fenglin.springboottest.entity.BoardPvpMatch;
 import com.fenglin.springboottest.entity.ForumLike;
 import com.fenglin.springboottest.entity.ForumPost;
 import com.fenglin.springboottest.entity.ForumReply;
 import com.fenglin.springboottest.entity.SparLog;
+import com.fenglin.springboottest.entity.UserCardView;
 import com.fenglin.springboottest.entity.UserCultivation;
 import com.fenglin.springboottest.entity.UserGongfa;
 import com.fenglin.springboottest.entity.UserRegisterRecord;
 import com.fenglin.springboottest.mapper.AdminLogMapper;
+import com.fenglin.springboottest.mapper.BoardGameLogMapper;
+import com.fenglin.springboottest.mapper.BoardItemMapper;
+import com.fenglin.springboottest.mapper.BoardPvpMatchMapper;
 import com.fenglin.springboottest.mapper.ForumLikeMapper;
 import com.fenglin.springboottest.mapper.ForumPostMapper;
 import com.fenglin.springboottest.mapper.ForumReplyMapper;
 import com.fenglin.springboottest.mapper.SparLogMapper;
+import com.fenglin.springboottest.mapper.UserCardViewMapper;
 import com.fenglin.springboottest.mapper.UserCultivationMapper;
 import com.fenglin.springboottest.mapper.UserGongfaMapper;
 import com.fenglin.springboottest.mapper.UserRegisterRecordMapper;
@@ -24,6 +33,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,7 +50,9 @@ import java.util.Objects;
  *   cy_forum_post / reply      论坛作者账号 author_name、展示名号 author_alias
  *   cy_forum_like              共鸣账号 user_name（带 (post_id,user_name) 唯一键）
  *   cy_admin_log               操作日志里的管理员账号
- *   user_cultivation / user_gongfa / spar_log   删除用户时按 user_id 级联清理
+ *   user_cultivation                                            管理员可编辑境界/神尊力/铜币/称号（单个或全部账号）
+ *   user_cultivation / user_gongfa / spar_log / user_card_view   删除用户时按 user_id 级联清理
+ *   board_game_log / board_item / board_pvp_match               删除用户时清理其桌游数据与对局
  *
  * 所有写方法都在同一个事务里，任一步失败整体回滚，不会出现主表改了、关联表没改。
  */
@@ -55,6 +68,10 @@ public class AdminDataSyncService {
     @Autowired private UserCultivationMapper cultivationMapper;
     @Autowired private UserGongfaMapper gongfaMapper;
     @Autowired private SparLogMapper sparLogMapper;
+    @Autowired private UserCardViewMapper cardViewMapper;
+    @Autowired private BoardGameLogMapper boardGameLogMapper;
+    @Autowired private BoardItemMapper boardItemMapper;
+    @Autowired private BoardPvpMatchMapper boardPvpMatchMapper;
     @Autowired private HomeContentService contentService;
 
     /* ==================== 用户资料 ==================== */
@@ -142,6 +159,147 @@ public class AdminDataSyncService {
         recordMapper.update(null, rw);
     }
 
+    /* ==================== 修炼数据（管理员编辑，支持指定账号 / 全部账号） ==================== */
+
+    /**
+     * 后台修炼数据列表：全部账号一行一条，未开辟修炼的按默认值展示（不改变数据库）。
+     */
+    public List<Map<String, Object>> listCultivations() {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (AvatarFoundation af : avatarService.list()) {
+            UserCultivation uc = cultivationMapper.selectOne(
+                    new QueryWrapper<UserCultivation>().eq("user_id", af.getId()));
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("user_id", af.getId());
+            m.put("deity_name", af.getDeityName());
+            m.put("realm", uc == null ? "筑基" : uc.getRealm());
+            m.put("power", uc == null || uc.getPower() == null ? 0 : uc.getPower());
+            m.put("copper", uc == null || uc.getCopper() == null ? 0 : uc.getCopper());
+            m.put("title", uc == null || uc.getTitle() == null ? "" : uc.getTitle());
+            m.put("initialized", uc != null);
+            out.add(m);
+        }
+        return out;
+    }
+
+    /**
+     * 管理员编辑修炼数据：可指定单个账号，或一次性作用于全部账号。
+     * <ul>
+     *   <li>realm 必须在境界阶梯内；power/copper 可为 0 及以上整数；title 可显式覆盖</li>
+     *   <li>只改 realm 而未显式给 title 时，按 {@link CultivationRules#REALM_TITLES} 自动授予对应最高称号</li>
+     *   <li>账号尚无修炼行则按默认值新建；全部在同一事务内落库</li>
+     * </ul>
+     * @return 实际更新的账号数
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int updateCultivation(Long targetId, boolean targetAll, Map<String, Object> item) {
+        if (item == null || item.isEmpty()) {
+            throw new IllegalArgumentException("缺少要修改的字段");
+        }
+        // 收集目标账号
+        List<Long> ids;
+        if (targetAll) {
+            ids = avatarService.list().stream()
+                    .map(AvatarFoundation::getId).filter(Objects::nonNull).toList();
+        } else {
+            if (targetId == null) throw new IllegalArgumentException("缺少 target_id");
+            if (avatarService.getById(targetId) == null) throw new IllegalArgumentException("目标用户不存在");
+            ids = List.of(targetId);
+        }
+        if (ids.isEmpty()) return 0;
+
+        // 校验字段
+        String realm = val(item, "realm");
+        if (realm != null && !CultivationRules.LADDER.contains(realm)) {
+            throw new IllegalArgumentException("境界必须为合法阶梯值");
+        }
+        Integer power = intVal(item, "power");
+        Integer copper = intVal(item, "copper");
+        if (power != null && power < 0) throw new IllegalArgumentException("神尊力不能为负");
+        if (copper != null && copper < 0) throw new IllegalArgumentException("铜币不能为负");
+        boolean hasTitle = item.containsKey("title");
+        String title = hasTitle ? val(item, "title") : null;
+
+        int n = 0;
+        for (Long id : ids) {
+            UserCultivation uc = cultivationMapper.selectOne(
+                    new QueryWrapper<UserCultivation>().eq("user_id", id));
+            if (uc == null) {
+                uc = new UserCultivation();
+                uc.setUserId(id);
+                uc.setRealm("筑基");
+                uc.setPower(0);
+                uc.setCopper(CultivationRules.INIT_COPPER);
+                uc.setSecretCount(0);
+            }
+            if (realm != null) {
+                uc.setRealm(realm);
+                if (!hasTitle) uc.setTitle(autoTitleOf(realm));
+            }
+            if (hasTitle) uc.setTitle(title);
+            if (power != null) uc.setPower(power);
+            if (copper != null) uc.setCopper(copper);
+            uc.setUpdatedAt(LocalDateTime.now());
+            if (uc.getId() == null) {
+                cultivationMapper.insert(uc);
+            } else {
+                cultivationMapper.updateById(uc);
+            }
+            n++;
+        }
+        return n;
+    }
+
+    /** 按境界自动授予的最高称号（暗星→封侯，无间及以上→封王，其余→null） */
+    private static String autoTitleOf(String realm) {
+        int idx = CultivationRules.indexOf(realm);
+        int hou = CultivationRules.indexOf("暗星");
+        int wang = CultivationRules.indexOf("无间");
+        if (wang >= 0 && idx >= wang) return CultivationRules.TITLE_FENGWANG;
+        if (hou >= 0 && idx >= hou) return CultivationRules.TITLE_FENGHOU;
+        return null;
+    }
+
+    /**
+     * 批量编辑账号资料：一次性作用于全部账号。
+     * 仅允许非身份字段（地域 / 权限 / 心魔誓约 / 简介），避免把账号名/密码/名号改成相同值造成冲突。
+     * 每个账号同步回写注册留痕，全部在同一事务内落库。
+     * @return 实际更新的账号数
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int updateUsersBatch(Map<String, Object> item) {
+        if (item == null || item.isEmpty()) throw new IllegalArgumentException("缺少要修改的字段");
+        String region = item.containsKey("region") ? val(item, "region") : null;
+        Integer permission = intVal(item, "permission");
+        Integer agreed = intVal(item, "agreed");
+        String story = item.containsKey("myth_story") ? val(item, "myth_story") : null;
+        if (region == null && permission == null && agreed == null && story == null) {
+            throw new IllegalArgumentException("批量修改仅支持：地域 / 权限 / 心魔誓约 / 神话简介");
+        }
+        if (permission != null && permission != 0 && permission != 1) {
+            throw new IllegalArgumentException("权限仅允许 0（管理员）或 1（默认用户）");
+        }
+
+        int n = 0;
+        for (AvatarFoundation af : avatarService.list()) {
+            if (region != null) af.setRegion(region);
+            if (permission != null) af.setPermission(permission);
+            if (agreed != null) af.setAgreed(agreed);
+            if (story != null) af.setMythStory(story);
+            avatarService.updateById(af);
+
+            UpdateWrapper<UserRegisterRecord> rw = new UpdateWrapper<>();
+            rw.eq("avatar_id", af.getId()).or().eq("account", af.getDeityName());
+            if (region != null) rw.set("region", region);
+            if (permission != null) rw.set("permission", permission);
+            if (agreed != null) rw.set("agreed", agreed);
+            if (story != null) rw.set("myth_story", story);
+            recordMapper.update(null, rw);
+            n++;
+        }
+        return n;
+    }
+
     /**
      * 删除用户并级联清理数据库里的相应内容。
      * 论坛帖子/回帖不删除（保留内容资产），作者账号统一改为「已注销神尊」；
@@ -152,8 +310,14 @@ public class AdminDataSyncService {
         int n = 0;
         n += cultivationMapper.delete(new QueryWrapper<UserCultivation>().eq("user_id", userId));
         n += gongfaMapper.delete(new QueryWrapper<UserGongfa>().eq("user_id", userId));
+        n += cardViewMapper.delete(new QueryWrapper<UserCardView>().eq("user_id", userId));
         n += sparLogMapper.delete(new QueryWrapper<SparLog>()
                 .eq("initiator_id", userId).or().eq("target_id", userId));
+        // 桌游：对局日志 / 道具背包 / PVP 对局（作为挑战者或应战者参与）一并清理
+        n += boardGameLogMapper.delete(new QueryWrapper<BoardGameLog>().eq("user_id", userId));
+        n += boardItemMapper.delete(new QueryWrapper<BoardItem>().eq("user_id", userId));
+        n += boardPvpMatchMapper.delete(new QueryWrapper<BoardPvpMatch>()
+                .eq("challenger_id", userId).or().eq("defender_id", userId));
         if (account != null && !account.isBlank()) {
             n += likeMapper.delete(new QueryWrapper<ForumLike>().eq("user_name", account));
             n += postMapper.update(null, new UpdateWrapper<ForumPost>()

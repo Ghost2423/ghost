@@ -152,6 +152,10 @@
                 <input type="color" v-model="form.color" class="color-pick" />
               </div>
             </div>
+            <div class="adm-field" style="grid-column:1/-1">
+              <label>配图路径（可选，留空则按 codex_{id} 自动用内置水墨图）</label>
+              <input v-model="form.image" class="adm-input" placeholder="留空自动配图，或填 /src/assets/images/xxx.webp" maxlength="255" />
+            </div>
           </div>
 
           <div class="adm-field">
@@ -345,7 +349,7 @@ function blank() {
   const c = cat.value === '全部' ? '神尊' : cat.value
   return {
     id: null, category: c, name: '', title: '', description: '', flavor: '',
-    color: colorOf(c), price: 0, power_gain: 0, sort_no: 0, status: 1
+    color: colorOf(c), image: '', price: 0, power_gain: 0, sort_no: 0, status: 1
   }
 }
 
@@ -354,7 +358,7 @@ function colorOf(c) {
 }
 
 function openCreate() { form.value = blank() }
-function openEdit(it) { form.value = { ...it } }
+function openEdit(it) { form.value = { image: '', ...it } }
 function onCatChange() { form.value.color = colorOf(form.value.category) }
 
 async function save() {
@@ -363,7 +367,7 @@ async function save() {
   busy.value = true
   const d = await saveAdminCodex(props.cred, {
     id: f.id, category: f.category, name: f.name.trim(), title: f.title,
-    description: f.description, flavor: f.flavor, color: f.color,
+    description: f.description, flavor: f.flavor, color: f.color, image: f.image || '',
     price: f.price, power_gain: f.power_gain, sort_no: f.sort_no, status: f.status
   })
   busy.value = false

@@ -133,6 +133,7 @@ public class HomeContentService {
         e.setDescription(str(item.get("description"), ""));
         e.setFlavor(str(item.get("flavor"), ""));
         e.setColor(str(item.get("color"), defaultColor(e.getCategory())));
+        e.setImage(str(item.get("image"), null));
         e.setPrice(asInt(item.get("price"), 0));
         e.setPowerGain(asInt(item.get("power_gain"), 0));
         e.setSortNo(asInt(item.get("sort_no"), 0));

@@ -111,3 +111,21 @@ CREATE TABLE IF NOT EXISTS spar_log (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='沧元图·切磋记录';
+
+-- -------------------------------------------------------------
+-- 5) 用户卡片首阅记录（首页每张卡片，每账号首次点开 +50 铜币）
+--    唯一键 (user_id, card_key) 保证同一卡片只奖励一次
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_card_view (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT          COMMENT '主键',
+  user_id    INT UNSIGNED NOT NULL                         COMMENT 'avatar_foundation.id',
+  card_key   VARCHAR(64)  NOT NULL                         COMMENT '卡片唯一标识：codex_{cy_codex.id}',
+  card_name  VARCHAR(64)  DEFAULT NULL                     COMMENT '卡片名号（冗余便于查看）',
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '首次浏览时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_user_card (user_id, card_key),
+  KEY idx_user (user_id)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='沧元图·首页卡片首阅记录';

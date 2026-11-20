@@ -42,6 +42,9 @@ public class CodexEntry {
     /** 卡片主色（首页卡片左侧色带/标签色） */
     private String color;
 
+    /** 卡片配图路径（可选，后台自定义覆盖；留空则前端按 codex_{id} 自动映射静态图） */
+    private String image;
+
     /** 排序（越小越前） */
     private Integer sortNo;
 
@@ -77,6 +80,9 @@ public class CodexEntry {
 
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
+
+    public String getImage() { return image; }
+    public void setImage(String image) { this.image = image; }
 
     public Integer getSortNo() { return sortNo; }
     public void setSortNo(Integer sortNo) { this.sortNo = sortNo; }

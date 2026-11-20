@@ -14,6 +14,7 @@
       <div style="display:flex;gap:10px;align-items:center">
         <input v-model="kw" class="adm-input" style="width:220px" placeholder="搜索账号 / 地域 / 原型…" />
         <button class="adm-btn" :disabled="loading" @click="load">{{ loading ? '加载中…' : '刷新' }}</button>
+        <button class="adm-btn primary solid" :disabled="busy" @click="openBatch">批量编辑全部账号</button>
       </div>
     </div>
 
@@ -119,12 +120,49 @@
         </div>
       </div>
     </transition>
+
+    <!-- ===== 批量编辑全部账号（仅非身份字段） ===== -->
+    <transition name="adm-fade">
+      <div class="adm-modal" v-if="batchEditing" @click.self="batchEditing = false">
+        <div class="adm-modal-card" style="max-width:560px">
+          <h3>批量编辑 · 全部账号</h3>
+          <p style="font-size:12px;color:#9fb0c8;line-height:1.7;margin:6px 0 14px">
+            保存会作用于<b>全部 {{ users.length }} 个账号</b>，写入 <b>avatar_foundation</b> 并同步各自注册留痕。
+            <span style="color:#e9c46a">账号 / 密码 / 名号属身份唯一字段，不参与批量修改，请逐个账号编辑。</span>
+            留空的字段保持各账号原值。
+          </p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px">
+            <label class="ef"><span>地域</span>
+              <input class="adm-input" v-model="bf.region" placeholder="留空不改" /></label>
+            <label class="ef"><span>权限</span>
+              <select class="adm-input" v-model="bf.permission">
+                <option value="">— 保持原值 —</option>
+                <option :value="1">1 · 默认用户</option>
+                <option :value="0">0 · 管理员</option>
+              </select></label>
+            <label class="ef"><span>心魔誓约</span>
+              <select class="adm-input" v-model="bf.agreed">
+                <option value="">— 保持原值 —</option>
+                <option :value="1">已立誓</option>
+                <option :value="0">未立誓</option>
+              </select></label>
+            <label class="ef" style="grid-column:1/-1"><span>神话原型简介</span>
+              <textarea class="adm-input" v-model="bf.myth_story" rows="3" placeholder="留空不改" style="resize:vertical"></textarea></label>
+          </div>
+          <div class="adm-modal-ops">
+            <button class="adm-btn" @click="batchEditing = false">取消</button>
+            <button class="adm-btn primary solid" :disabled="busy || !batchHasChange" @click="saveBatch">
+              {{ busy ? '保存中…' : '应用到全部账号' }}</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </section>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchAdminUsers, updatePermission, deleteAdminUser, updateAdminUser } from '../../api'
+import { fetchAdminUsers, updatePermission, deleteAdminUser, updateAdminUser, batchUpdateAdminUsers } from '../../api'
 
 const props = defineProps({
   cred: { type: Object, required: true },
@@ -139,7 +177,12 @@ const kw = ref('')
 const pending = ref(null)
 const editing = ref(null)
 const f = ref({})
+const batchEditing = ref(false)
+const bf = ref({ region: '', permission: '', agreed: '', myth_story: '' })
 const isSelf = computed(() => Number(editing.value && editing.value.id) === Number(props.adminId))
+const batchHasChange = computed(() =>
+  String(bf.value.region).trim() !== '' || String(bf.value.permission).trim() !== '' ||
+  String(bf.value.agreed).trim() !== '' || String(bf.value.myth_story).trim() !== '')
 
 const filtered = computed(() => {
   const k = kw.value.trim().toLowerCase()
@@ -191,6 +234,26 @@ async function saveEdit() {
   editing.value = null
   await load()
   if (self && d.user) emit('self-updated', d.user)
+}
+
+function openBatch() {
+  bf.value = { region: '', permission: '', agreed: '', myth_story: '' }
+  batchEditing.value = true
+}
+
+async function saveBatch() {
+  const item = {}
+  if (String(bf.value.region).trim() !== '') item.region = bf.value.region.trim()
+  if (String(bf.value.permission).trim() !== '') item.permission = Number(bf.value.permission)
+  if (String(bf.value.agreed).trim() !== '') item.agreed = Number(bf.value.agreed)
+  if (String(bf.value.myth_story).trim() !== '') item.myth_story = bf.value.myth_story.trim()
+  busy.value = true
+  const d = await batchUpdateAdminUsers(props.cred, item)
+  busy.value = false
+  if (!d.ok) return emit('toast', d.msg || '批量保存失败', true)
+  batchEditing.value = false
+  emit('toast', `已应用到全部账号，影响 ${d.updated || 0} 人`)
+  await load()
 }
 
 async function togglePerm(u) {

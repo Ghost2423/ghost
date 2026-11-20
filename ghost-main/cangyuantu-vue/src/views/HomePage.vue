@@ -51,8 +51,37 @@
       </div>
     </header>
 
+    <!-- ===== 我的修行：登录后即时展示境界 / 神尊力 / 铜币（数据实时取自 MySQL） ===== -->
+    <section class="my-cultivation" v-if="cul">
+      <div class="mc-inner">
+        <div class="mc-id">
+          <span class="mc-seal">修</span>
+          <div class="mc-who">
+            <b>{{ cul.entry_name || entryName }}</b>
+            <span>道途 · {{ cul.stage }}</span>
+          </div>
+        </div>
+        <div class="mc-stats">
+          <div class="mc-stat">
+            <span class="mc-s-label">当前境界</span>
+            <b class="mc-s-value">{{ cul.realm }}</b>
+          </div>
+          <div class="mc-stat">
+            <span class="mc-s-label">神尊力</span>
+            <b class="mc-s-value jade">⚡ {{ cul.power }}</b>
+          </div>
+          <div class="mc-stat">
+            <span class="mc-s-label">铜币</span>
+            <b class="mc-s-value gold">◉ {{ cul.copper }}</b>
+          </div>
+        </div>
+        <button class="mc-go" @click="$emit('open-cultivation')">入修炼殿 ›</button>
+      </div>
+    </section>
+
     <!-- ===== 英雄区 + 主检索栏 ===== -->
     <section class="hero">
+      <div class="hero-bg" v-if="heroImage" :style="{ backgroundImage: 'url(' + heroImage + ')' }"></div>
       <div class="hero-badge">{{ heroBadge }}</div>
       <h1 class="hero-title">{{ heroTitle }}</h1>
       <p class="hero-sub">{{ heroSubtitle }}</p>
@@ -84,6 +113,10 @@
       <div class="frames">
         <article v-for="f in showcase" :key="f.type" class="frame"
                  :style="{ '--c': f.color }" @click="goSection(f.type)">
+          <div class="frame-media" v-if="sectionImage[f.type]">
+            <img :src="sectionImage[f.type]" :alt="f.title" />
+            <span class="frame-media-veil"></span>
+          </div>
           <div class="frame-ico">{{ f.icon }}</div>
           <h3 class="frame-title">{{ f.title }}</h3>
           <p class="frame-desc">{{ f.desc }}</p>
@@ -129,6 +162,11 @@
         <div class="grid">
           <article v-for="(it, idx) in itemsOf(sec.type)" :key="sec.type + idx" class="card"
                    :style="{ '--c': it.color || sec.color }" @click="onOpen(it)">
+            <div class="card-media" v-if="itemImage(it)">
+              <img :src="itemImage(it)" :alt="it.name" loading="lazy" />
+              <span class="card-media-veil"></span>
+            </div>
+            <span class="card-viewed" v-if="isViewed(it)">已阅</span>
             <div class="card-top">
               <span class="card-tag">{{ it.tag || sec.tag }}</span>
               <span class="card-type">{{ it.type }}</span>
@@ -162,6 +200,9 @@
       <div class="modal" v-if="activeItem" @click.self="closeModal">
         <div class="modal-card" :style="{ '--c': activeItem.color }">
           <button class="modal-x" @click="closeModal">✕</button>
+          <div class="modal-media" v-if="itemImage(activeItem)">
+            <img :src="itemImage(activeItem)" :alt="activeItem.name" />
+          </div>
           <span class="modal-tag">{{ activeItem.tag }}</span>
           <h3 class="modal-name">{{ activeItem.name }}</h3>
           <span class="modal-type">{{ activeItem.type }} · 元界记载</span>
@@ -179,7 +220,30 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { searchCangyuan, fetchCodex, fetchHomeConfig } from '../api'
+import { searchCangyuan, fetchCodex, fetchHomeConfig, fetchCultivation, viewCard, fetchViewedCards } from '../api'
+
+/* ===== 国风水墨配图：按 codex_{id} 自动映射本地静态图 ===== */
+// Vite 用 import.meta.glob 收集 assets/images 下所有 png，建立「文件名(无扩展) → URL」映射。
+// 后端条目若带 image 字段则优先用后台自定义路径，否则按 codex_{id} 取内置水墨图。
+const imageModules = import.meta.glob('../assets/images/*.webp', { eager: true, import: 'default' })
+const imageMap = {}
+for (const [path, url] of Object.entries(imageModules)) {
+  const name = path.split('/').pop().replace(/\.webp$/, '')
+  imageMap[name] = url
+}
+// 展示框按分类取图
+const sectionImage = {
+  '神尊': imageMap['sec-deity'], '功法': imageMap['sec-gongfa'],
+  '妖魔': imageMap['sec-demon'], '秘境': imageMap['sec-realm']
+}
+const heroImage = imageMap['hero']
+function itemImage(it) {
+  if (!it) return ''
+  if (it.image) return it.image                  // 后台自定义优先
+  if (it.id != null && imageMap['codex_' + it.id]) return imageMap['codex_' + it.id]
+  // 本地兜底条目：按类型取分类图
+  return sectionImage[it.type] || ''
+}
 
 const props = defineProps({ avatar: { type: Object, default: null } })
 const emit = defineEmits(['logout', 'open-admin', 'open-cultivation', 'open-boardgame', 'open-forum'])
@@ -260,6 +324,38 @@ const showAvatar = computed(() => {
   return !a.isGuest && a.deity_name === '九天应元雷声普化天尊'
 })
 
+/* ===== 我的修行（境界 / 神尊力 / 铜币，实时取自 MySQL） ===== */
+// 每次进入首页（含从修炼殿返回）都会重新挂载并拉取，确保看到的是数据库里的最新资源；
+// 游客不落库，不显示此条。
+const cul = ref(null)
+async function loadMyCultivation() {
+  const a = props.avatar || {}
+  if (a.isGuest || !a.deity_name) { cul.value = null; return }
+  try {
+    const d = await fetchCultivation(a.deity_name)
+    if (d && d.ok && d.cultivation) cul.value = d.cultivation
+  } catch (e) {
+    cul.value = null
+  }
+}
+
+/* ===== 卡片首阅：已点开过的卡片显示「已阅」角标 ===== */
+const viewedKeys = ref([])
+function cardKeyOf(it) {
+  return it.id != null
+    ? 'codex_' + it.id
+    : 'local_' + (it.type || '') + '_' + (it.name || '')
+}
+function isViewed(it) { return viewedKeys.value.includes(cardKeyOf(it)) }
+async function loadViewedCards() {
+  const a = props.avatar || {}
+  if (a.isGuest || !a.deity_name) { viewedKeys.value = []; return }
+  try {
+    const d = await fetchViewedCards(a.deity_name)
+    if (d && d.ok && Array.isArray(d.card_keys)) viewedKeys.value = d.card_keys
+  } catch (e) { viewedKeys.value = [] }
+}
+
 /* ===== 检索 ===== */
 const keyword = ref('')
 const lastKeyword = ref('')
@@ -291,6 +387,8 @@ function baseSource() { return codexItems.value || rawCatalog }
 
 // 进入首页即向后端拉取图鉴与展示配置（首页展示功能后端化）
 onMounted(async () => {
+  loadMyCultivation()
+  loadViewedCards()
   try {
     const d = await fetchCodex()
     if (d && d.ok && Array.isArray(d.items)) codexItems.value = d.items
@@ -467,7 +565,22 @@ const catalog = computed(() => {
 // 各分类下条目
 function itemsOf(type) { return catalog.value.filter(it => (it.type || '') === type) }
 
-function onOpen(it) { activeItem.value = it }
+// 点开卡片：首次浏览奖励 50 铜币（后端以 user_id + card_key 唯一键防重复），并同步资源条。
+// 游客无数据库根基，跳过；后端不可用时静默失败，不影响正常浏览。
+async function onOpen(it) {
+  activeItem.value = it
+  const a = props.avatar || {}
+  if (a.isGuest || !a.deity_name) return
+  const key = cardKeyOf(it)
+  try {
+    const d = await viewCard({ name: a.deity_name, spell: a.spell }, key, it.name)
+    if (d && d.ok && d.first_view) {
+      if (d.cultivation) cul.value = d.cultivation
+      if (!viewedKeys.value.includes(key)) viewedKeys.value = [...viewedKeys.value, key]
+      toast(`初见「${it.name}」，得 ${d.reward} 铜币`)
+    }
+  } catch (e) { /* 奖励失败不影响浏览 */ }
+}
 const activeItem = ref(null)
 function closeModal() { activeItem.value = null }
 
@@ -566,8 +679,42 @@ function toast(msg) {
 .admin-entry:hover{box-shadow:0 0 18px rgba(233,196,106,.4);
   border-color:var(--gold);transform:translateY(-1px)}
 
+/* ===== 我的修行资源条 ===== */
+.my-cultivation{max-width:1240px;margin:18px auto 0;padding:0 26px;position:relative;z-index:2}
+.mc-inner{display:flex;align-items:center;gap:22px;padding:14px 22px;border-radius:16px;
+  background:linear-gradient(120deg,rgba(14,22,42,.78),rgba(7,11,22,.6));
+  border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px);
+  box-shadow:0 12px 34px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06);
+  position:relative;overflow:hidden}
+.mc-inner::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--jade),var(--gold));opacity:.9}
+.mc-id{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.mc-seal{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  font-weight:900;font-size:18px;color:#04130f;
+  background:linear-gradient(135deg,var(--jade),#5eead4);
+  box-shadow:0 0 16px rgba(45,212,191,.4)}
+.mc-who{display:flex;flex-direction:column;gap:3px}
+.mc-who b{font-size:15px;letter-spacing:2px;color:var(--gold);
+  font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;white-space:nowrap}
+.mc-who span{font-size:11px;color:var(--muted);letter-spacing:1px}
+.mc-stats{display:flex;align-items:center;justify-content:center;gap:30px;flex:1}
+.mc-stat{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:78px}
+.mc-s-label{font-size:11px;color:var(--muted);letter-spacing:2px}
+.mc-s-value{font-size:19px;font-weight:900;letter-spacing:1px;color:var(--text)}
+.mc-s-value.jade{color:var(--jade);text-shadow:0 0 12px rgba(45,212,191,.4)}
+.mc-s-value.gold{color:var(--gold);text-shadow:0 0 12px rgba(233,196,106,.4)}
+.mc-go{padding:9px 18px;border:1px solid rgba(45,212,191,.45);border-radius:999px;
+  background:rgba(45,212,191,.1);color:var(--jade);cursor:pointer;font-family:inherit;
+  font-size:12px;letter-spacing:2px;transition:.15s;flex-shrink:0;white-space:nowrap}
+.mc-go:hover{background:rgba(45,212,191,.2);box-shadow:0 0 18px rgba(45,212,191,.25)}
+
 /* ===== 英雄区 ===== */
 .hero{max-width:960px;margin:0 auto;padding:74px 26px 24px;text-align:center;position:relative;z-index:2}
+/* 水墨主视觉背景：绝对定位铺满英雄区，上下渐隐融入底色 */
+.hero-bg{position:absolute;inset:0 -8%;z-index:-1;background-size:cover;background-position:center 42%;
+  background-repeat:no-repeat;opacity:.5;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 62%,transparent 100%);
+  mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 62%,transparent 100%)}
 .hero-badge{display:inline-block;font-size:12px;letter-spacing:5px;color:var(--jade);
   border:1px solid var(--line);border-radius:999px;padding:6px 16px;
   background:rgba(45,212,191,.08);box-shadow:0 0 14px rgba(45,212,191,.12) inset}
@@ -628,7 +775,13 @@ function toast(msg) {
   background:linear-gradient(180deg,var(--c),transparent);opacity:.9}
 .frame:hover{transform:translateY(-6px);border-color:var(--c);
   box-shadow:0 28px 64px rgba(0,0,0,.55),0 0 30px color-mix(in srgb,var(--c) 40%,transparent)}
-.frame-ico{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+.frame-media{position:relative;height:112px;margin:-26px -22px 16px;overflow:hidden;
+  border-radius:18px 18px 0 0;background:rgba(0,0,0,.25)}
+.frame-media img{width:100%;height:100%;object-fit:cover;display:block;transition:.35s}
+.frame:hover .frame-media img{transform:scale(1.08)}
+.frame-media-veil{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,transparent 40%,rgba(7,11,22,.82) 100%)}
+.frame-ico{position:relative;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
   font-size:26px;color:var(--c);margin-bottom:16px;
   background:color-mix(in srgb,var(--c) 14%,transparent);
   border:1px solid color-mix(in srgb,var(--c) 36%,transparent);
@@ -683,19 +836,29 @@ function toast(msg) {
   backdrop-filter:blur(12px);box-shadow:0 18px 44px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.06);
   transition:.2s}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
-  background:linear-gradient(180deg,var(--c),transparent);opacity:.85}
+  background:linear-gradient(180deg,var(--c),transparent);opacity:.85;z-index:2}
 .card:hover{transform:translateY(-5px);border-color:var(--c);
   box-shadow:0 26px 60px rgba(0,0,0,.55),0 0 26px color-mix(in srgb,var(--c) 35%,transparent)}
-.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-media{position:relative;height:132px;margin:-22px -20px 16px;overflow:hidden;
+  border-radius:18px 18px 0 0;background:rgba(0,0,0,.2)}
+.card-media img{width:100%;height:100%;object-fit:cover;display:block;transition:.35s}
+.card:hover .card-media img{transform:scale(1.07)}
+.card-media-veil{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,transparent 50%,rgba(9,14,28,.72) 100%)}
+.card-top{position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .card-tag{font-size:11px;letter-spacing:2px;padding:4px 10px;border-radius:999px;
   color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);
   border:1px solid color-mix(in srgb,var(--c) 40%,transparent)}
 .card-type{font-size:11px;color:var(--muted);letter-spacing:2px}
-.card-name{font-size:20px;font-weight:900;letter-spacing:2px;margin-bottom:10px;
+.card-viewed{position:absolute;top:0;right:0;z-index:3;padding:4px 11px;border-radius:0 18px 0 11px;
+  font-size:10px;letter-spacing:1px;color:#cbd5e1;
+  background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.28);
+  border-top:0;border-right:0;pointer-events:none}
+.card-name{position:relative;font-size:20px;font-weight:900;letter-spacing:2px;margin-bottom:10px;
   font-family:"ZCOOL XiaoWei","Noto Serif SC",serif}
-.card-desc{font-size:13px;color:var(--muted);line-height:1.9;letter-spacing:.5px;
+.card-desc{position:relative;font-size:13px;color:var(--muted);line-height:1.9;letter-spacing:.5px;
   min-height:62px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.card-more{margin-top:12px;background:none;border:none;color:var(--c);cursor:pointer;
+.card-more{position:relative;margin-top:12px;background:none;border:none;color:var(--c);cursor:pointer;
   font-family:inherit;font-size:13px;letter-spacing:3px;padding:0;transition:.15s}
 .card-more:hover{letter-spacing:5px}
 
@@ -731,20 +894,25 @@ function toast(msg) {
   background:linear-gradient(130deg,var(--c),transparent 46%,color-mix(in srgb,var(--c) 60%,transparent));
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7}
-.modal-x{position:absolute;top:16px;right:18px;width:32px;height:32px;border-radius:50%;
-  border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;font-size:14px;transition:.15s}
+.modal-media{height:220px;margin:-38px -34px 22px;overflow:hidden;border-radius:22px 22px 0 0;
+  background:rgba(0,0,0,.25)}
+.modal-media img{width:100%;height:100%;object-fit:cover;display:block;
+  -webkit-mask-image:linear-gradient(180deg,#000 70%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 70%,transparent 100%)}
+.modal-x{position:absolute;top:16px;right:18px;z-index:3;width:32px;height:32px;border-radius:50%;
+  border:1px solid var(--line);background:rgba(7,11,22,.6);color:#fff;cursor:pointer;font-size:14px;transition:.15s}
 .modal-x:hover{color:var(--crimson);border-color:var(--crimson)}
-.modal-tag{display:inline-block;font-size:11px;letter-spacing:2px;padding:4px 11px;border-radius:999px;
+.modal-tag{position:relative;display:inline-block;font-size:11px;letter-spacing:2px;padding:4px 11px;border-radius:999px;
   color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);
   border:1px solid color-mix(in srgb,var(--c) 40%,transparent)}
-.modal-name{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:32px;letter-spacing:4px;
+.modal-name{position:relative;font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:32px;letter-spacing:4px;
   font-weight:900;margin:14px 0 6px}
-.modal-type{font-size:12px;color:var(--muted);letter-spacing:2px}
-.modal-desc{font-size:14px;color:#cdd9ec;line-height:2;letter-spacing:.5px;margin:18px 0 16px}
-.modal-flavor{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:16px;color:var(--c);
+.modal-type{position:relative;font-size:12px;color:var(--muted);letter-spacing:2px}
+.modal-desc{position:relative;font-size:14px;color:#cdd9ec;line-height:2;letter-spacing:.5px;margin:18px 0 16px}
+.modal-flavor{position:relative;font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:16px;color:var(--c);
   letter-spacing:2px;line-height:1.8;text-shadow:0 0 16px color-mix(in srgb,var(--c) 40%,transparent);
   padding:14px 16px;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 8%,transparent);border-radius:0 12px 12px 0}
-.modal-close{margin-top:22px;width:100%;padding:11px;border:none;border-radius:11px;cursor:pointer;
+.modal-close{position:relative;margin-top:22px;width:100%;padding:11px;border:none;border-radius:11px;cursor:pointer;
   font-family:inherit;font-size:14px;font-weight:700;letter-spacing:6px;color:#04130f;
   background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 60%,#5eead4))}
 .modal-close:hover{filter:brightness(1.08)}
@@ -768,6 +936,13 @@ function toast(msg) {
   .nav-search input{width:120px}
   .uname{display:none}
   .hero-title{font-size:44px;letter-spacing:5px}
+  .mc-stats{gap:16px}
+  .mc-go{display:none}
+}
+@media(max-width:560px){
+  .mc-inner{flex-wrap:wrap;gap:12px;padding:14px 18px}
+  .mc-stats{order:3;width:100%;justify-content:space-between}
+  .mc-stat{min-width:0}
 }
 @media(max-width:560px){
   .frames{grid-template-columns:1fr}

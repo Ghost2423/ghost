@@ -18,6 +18,9 @@ import java.util.Map;
  * 沧元图 · 后台「数据编辑」API（全部校验管理员凭证，全部写数据库并写操作日志）
  *
  *   POST /api/admin/user/update          编辑用户资料（账号/密码/地域/名号/故事/权限）
+ *   POST /api/admin/user/batch-update    批量编辑账号资料（全部账号，非身份字段）
+ *   POST /api/admin/cultivation/list     修炼数据列表（全部账号境界/神尊力/铜币/称号）
+ *   POST /api/admin/cultivation/update   编辑修炼数据（target_all=true 改全部，否则按 target_id 改单个）
  *   POST /api/admin/register/update      编辑注册记录，并回写关联用户与论坛作者
  *   POST /api/admin/forum/edit           编辑论题（板块/标题/正文）
  *   POST /api/admin/forum/reply/edit     编辑回帖正文
@@ -31,6 +34,66 @@ public class AdminDataController {
 
     @Autowired private AdminAuth adminAuth;
     @Autowired private AdminDataSyncService syncService;
+
+    /** 修炼数据列表：全部账号的境界/神尊力/铜币/称号，供后台表格展示 */
+    @PostMapping("/cultivation/list")
+    public ResponseEntity<Map<String, Object>> cultivationList(@RequestBody AdminDataRequest req) {
+        AvatarFoundation admin = adminAuth.requireAdmin(req.getName(), req.getSpell());
+        if (admin == null) return denied("查看修炼数据");
+        Map<String, Object> r = ApiResult.ok();
+        r.put("list", syncService.listCultivations());
+        return ResponseEntity.ok(r);
+    }
+
+    /**
+     * 编辑修炼数据：target_all=true 作用于全部账号，否则按 target_id 修改单个账号。
+     * 支持字段：realm / power / copper / title；境界变更未给 title 时按规则自动授予称号。
+     */
+    @PostMapping("/cultivation/update")
+    public ResponseEntity<Map<String, Object>> updateCultivation(@RequestBody AdminDataRequest req) {
+        AvatarFoundation admin = adminAuth.requireAdmin(req.getName(), req.getSpell());
+        if (admin == null) return denied("修改修炼数据");
+        boolean all = Boolean.TRUE.equals(req.getTargetAll());
+        if (!all && req.getTargetId() == null) {
+            return ResponseEntity.badRequest().body(ApiResult.fail("缺少 target_id"));
+        }
+        if (req.getItem() == null || req.getItem().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResult.fail("缺少 item 数据"));
+        }
+        try {
+            int n = syncService.updateCultivation(req.getTargetId(), all, req.getItem());
+            String scope = all ? "全部账号" : ("账号 " + req.getTargetId());
+            syncService.log(admin, "修改", "修炼数据", all ? "ALL" : String.valueOf(req.getTargetId()),
+                    scope + " · " + req.getItem() + " · 影响 " + n + " 人");
+            Map<String, Object> r = ApiResult.ok();
+            r.put("updated", n);
+            return ResponseEntity.ok(r);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResult.fail(e.getMessage()));
+        }
+    }
+
+    /**
+     * 批量编辑账号资料（全部账号）：仅支持地域 / 权限 / 心魔誓约 / 神话简介等非身份字段，
+     * 避免账号名/密码/名号批量改成相同值。每个账号同步回写注册留痕。
+     */
+    @PostMapping("/user/batch-update")
+    public ResponseEntity<Map<String, Object>> batchUpdateUsers(@RequestBody AdminDataRequest req) {
+        AvatarFoundation admin = adminAuth.requireAdmin(req.getName(), req.getSpell());
+        if (admin == null) return denied("批量编辑账号资料");
+        if (req.getItem() == null || req.getItem().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResult.fail("缺少 item 数据"));
+        }
+        try {
+            int n = syncService.updateUsersBatch(req.getItem());
+            syncService.log(admin, "修改", "用户", "ALL", "批量资料 " + req.getItem() + " · 影响 " + n + " 人");
+            Map<String, Object> r = ApiResult.ok();
+            r.put("updated", n);
+            return ResponseEntity.ok(r);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResult.fail(e.getMessage()));
+        }
+    }
 
     /** 编辑用户资料 */
     @PostMapping("/user/update")

@@ -284,6 +284,27 @@ export function updateAdminUser(cred, targetId, item) {
   return request('/api/admin/user/update', jsonPost({ ...cred, target_id: targetId, item }))
 }
 
+/** 修炼数据列表：POST /api/admin/cultivation/list -> {ok, list:[{user_id,deity_name,realm,power,copper,title,initialized}]} */
+export function fetchAdminCultivations(cred) {
+  return request('/api/admin/cultivation/list', jsonPost(cred))
+}
+
+/**
+ * 编辑修炼数据：POST /api/admin/cultivation/update
+ * targetAll=true 作用于全部账号；否则用 targetId 指定单个账号。
+ * item 可含 realm / power / copper / title（只传要改的字段）。
+ */
+export function updateAdminCultivation(cred, targetId, targetAll, item) {
+  return request('/api/admin/cultivation/update', jsonPost({
+    ...cred, target_id: targetId, target_all: !!targetAll, item
+  }))
+}
+
+/** 批量编辑全部账号资料：POST /api/admin/user/batch-update {name, spell, item}（仅地域/权限/心魔誓约/简介） */
+export function batchUpdateAdminUsers(cred, item) {
+  return request('/api/admin/user/batch-update', jsonPost({ ...cred, item }))
+}
+
 /** 编辑注册记录：POST /api/admin/register/update {name, spell, id, item}（同步用户主表与论坛作者） */
 export function updateRegisterRecord(cred, id, item) {
   return request('/api/admin/register/update', jsonPost({ ...cred, id, item }))
@@ -352,6 +373,18 @@ export function breakthroughRealm(cred) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...cred })
   })
+}
+
+/** 已浏览卡片标识列表：GET /api/cultivation/viewed-cards?name=xx -> {ok, card_keys} */
+export function fetchViewedCards(name) {
+  return request('/api/cultivation/viewed-cards?name=' + encodeURIComponent(name))
+}
+
+/** 首页卡片首阅奖励：POST /api/cultivation/view-card {name, spell, card_key, card_name} */
+export function viewCard(cred, cardKey, cardName) {
+  return request('/api/cultivation/view-card', jsonPost({
+    ...cred, card_key: cardKey, card_name: cardName
+  }))
 }
 
 /* =============================================================

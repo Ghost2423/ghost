@@ -24,6 +24,7 @@ import java.util.Map;
  * - POST /api/cultivation/spar         切磋 {name, spell, target}（双方各得神尊力与铜币）
  * - POST /api/cultivation/buy          购功法 {name, spell, gongfa}（耗铜币得神尊力，限购一次）
  * - POST /api/cultivation/break        突破 {name, spell}（耗神尊力晋升境界，可获称号）
+ * - POST /api/cultivation/view-card    首页卡片首阅 {name, spell, card_key, card_name}（首次 +50 铜币）
  *
  * 写操作均以 name+spell 为凭证（与登录/后台管理系统一致，明文比对）。
  */
@@ -100,6 +101,26 @@ public class CultivationController {
             return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
         }
         return ResponseEntity.ok(wrap(cultivationService.breakthrough(af)));
+    }
+
+    /** 已浏览卡片标识列表（供首页标记「已阅」） */
+    @GetMapping("/viewed-cards")
+    public ResponseEntity<Map<String, Object>> viewedCards(@RequestParam("name") String name) {
+        AvatarFoundation af = avatarService.getByDeityName(name == null ? "" : name.trim());
+        if (af == null) {
+            return ResponseEntity.status(404).body(ApiResult.fail("未寻得此神尊根基"));
+        }
+        return ResponseEntity.ok(ApiResult.ok("card_keys", cultivationService.viewedCards(af.getId())));
+    }
+
+    /** 首页卡片首次浏览奖励（每张每账号仅一次，+50 铜币） */
+    @PostMapping("/view-card")
+    public ResponseEntity<Map<String, Object>> viewCard(@RequestBody CultivationRequest req) {
+        AvatarFoundation af = requireUser(req.getName(), req.getSpell());
+        if (af == null) {
+            return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
+        }
+        return ResponseEntity.ok(wrap(cultivationService.viewCard(af, req.getCardKey(), req.getCardName())));
     }
 
     /** 在服务结果之上补 ok:true，保持统一返回结构 */

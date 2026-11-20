@@ -21,6 +21,8 @@ public class AdminDataRequest {
     private Long id;
     /** 目标回帖 id（forum/reply/edit） */
     private Long replyId;
+    /** 是否作用于全部账号（修炼数据批量编辑：target_all=true 时忽略 target_id） */
+    private Boolean targetAll;
     /** 要写入的字段 */
     private Map<String, Object> item;
 
@@ -38,6 +40,9 @@ public class AdminDataRequest {
 
     public Long getReplyId() { return replyId; }
     public void setReplyId(Long replyId) { this.replyId = replyId; }
+
+    public Boolean getTargetAll() { return targetAll; }
+    public void setTargetAll(Boolean targetAll) { this.targetAll = targetAll; }
 
     public Map<String, Object> getItem() { return item; }
     public void setItem(Map<String, Object> item) { this.item = item; }
