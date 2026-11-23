@@ -75,6 +75,12 @@
             <b class="mc-s-value gold">◉ {{ cul.copper }}</b>
           </div>
         </div>
+        <button class="mc-checkin" v-if="cul.checkin"
+                :class="{ done: cul.checkin.checked_today }"
+                :disabled="checkinBusy || cul.checkin.checked_today"
+                @click="doCheckIn">
+          {{ cul.checkin.checked_today ? '✓ 今日已签' : `☀ 签到 +${cul.checkin.reward}` }}
+        </button>
         <button class="mc-go" @click="$emit('open-cultivation')">入修炼殿 ›</button>
       </div>
     </section>
@@ -220,7 +226,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { searchCangyuan, fetchCodex, fetchHomeConfig, fetchCultivation, viewCard, fetchViewedCards } from '../api'
+import { searchCangyuan, fetchCodex, fetchHomeConfig, fetchCultivation, viewCard, fetchViewedCards, dailyCheckIn } from '../api'
 
 /* ===== 国风水墨配图：按 codex_{id} 自动映射本地静态图 ===== */
 // Vite 用 import.meta.glob 收集 assets/images 下所有 png，建立「文件名(无扩展) → URL」映射。
@@ -328,6 +334,7 @@ const showAvatar = computed(() => {
 // 每次进入首页（含从修炼殿返回）都会重新挂载并拉取，确保看到的是数据库里的最新资源；
 // 游客不落库，不显示此条。
 const cul = ref(null)
+const checkinBusy = ref(false)
 async function loadMyCultivation() {
   const a = props.avatar || {}
   if (a.isGuest || !a.deity_name) { cul.value = null; return }
@@ -337,6 +344,19 @@ async function loadMyCultivation() {
   } catch (e) {
     cul.value = null
   }
+}
+
+/* ===== 每日签到：首页直接领铜币，领完即时刷新资源条 ===== */
+async function doCheckIn() {
+  const a = props.avatar || {}
+  if (checkinBusy.value || a.isGuest || !a.deity_name) return
+  checkinBusy.value = true
+  const d = await dailyCheckIn({ name: a.deity_name, spell: a.spell })
+  checkinBusy.value = false
+  if (d && d.ok && d.cultivation) {
+    cul.value = d.cultivation
+    toast(`签到得 ${d.reward} 铜币` + (d.bonus ? `（连签 ${d.streak} 天额外 +${d.bonus}）` : ''))
+  } else toast((d && d.msg) || '签到失败')
 }
 
 /* ===== 卡片首阅：已点开过的卡片显示「已阅」角标 ===== */
@@ -703,6 +723,11 @@ function toast(msg) {
 .mc-s-value{font-size:19px;font-weight:900;letter-spacing:1px;color:var(--text)}
 .mc-s-value.jade{color:var(--jade);text-shadow:0 0 12px rgba(45,212,191,.4)}
 .mc-s-value.gold{color:var(--gold);text-shadow:0 0 12px rgba(233,196,106,.4)}
+.mc-checkin{padding:9px 16px;border:1px solid rgba(233,196,106,.5);border-radius:999px;
+  background:rgba(233,196,106,.12);color:var(--gold);cursor:pointer;font-family:inherit;
+  font-size:12px;letter-spacing:1px;transition:.15s;flex-shrink:0;white-space:nowrap}
+.mc-checkin:hover:not(:disabled){background:rgba(233,196,106,.24);box-shadow:0 0 18px rgba(233,196,106,.25)}
+.mc-checkin.done{opacity:.55;cursor:default;border-color:var(--line);color:var(--muted);background:rgba(255,255,255,.04)}
 .mc-go{padding:9px 18px;border:1px solid rgba(45,212,191,.45);border-radius:999px;
   background:rgba(45,212,191,.1);color:var(--jade);cursor:pointer;font-family:inherit;
   font-size:12px;letter-spacing:2px;transition:.15s;flex-shrink:0;white-space:nowrap}

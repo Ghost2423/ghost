@@ -25,6 +25,7 @@ import java.util.Map;
  * - POST /api/cultivation/buy          购功法 {name, spell, gongfa}（耗铜币得神尊力，限购一次）
  * - POST /api/cultivation/break        突破 {name, spell}（耗神尊力晋升境界，可获称号）
  * - POST /api/cultivation/view-card    首页卡片首阅 {name, spell, card_key, card_name}（首次 +50 铜币）
+ * - POST /api/cultivation/check-in     每日签到 {name, spell}（每天一次，+50 铜币，连签有加成）
  *
  * 写操作均以 name+spell 为凭证（与登录/后台管理系统一致，明文比对）。
  */
@@ -121,6 +122,16 @@ public class CultivationController {
             return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
         }
         return ResponseEntity.ok(wrap(cultivationService.viewCard(af, req.getCardKey(), req.getCardName())));
+    }
+
+    /** 每日签到（每账号每天一次，基础 +50 铜币，连续 3/7 天额外奖励） */
+    @PostMapping("/check-in")
+    public ResponseEntity<Map<String, Object>> checkIn(@RequestBody CultivationRequest req) {
+        AvatarFoundation af = requireUser(req.getName(), req.getSpell());
+        if (af == null) {
+            return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
+        }
+        return ResponseEntity.ok(wrap(cultivationService.checkIn(af)));
     }
 
     /** 在服务结果之上补 ok:true，保持统一返回结构 */

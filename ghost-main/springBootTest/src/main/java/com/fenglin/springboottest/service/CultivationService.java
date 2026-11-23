@@ -14,6 +14,7 @@ import java.util.Map;
  * - buy          购买功法（耗铜币，得神尊力，永久持有）
  * - breakthrough 突破（耗神尊力，晋升下一境界，可获称号）
  * - viewCard    首页卡片首次浏览（每张每账号仅一次，+50 铜币）
+ * - checkIn     每日签到（每天一次，+50 铜币，连续 3/7 天有额外奖励）
  */
 public interface CultivationService {
 
@@ -37,4 +38,7 @@ public interface CultivationService {
 
     /** 某账号已浏览过的卡片标识列表（供首页标记「已阅」） */
     List<String> viewedCards(Long userId);
+
+    /** 每日签到（每账号每天一次，奖励铜币） */
+    Map<String, Object> checkIn(AvatarFoundation af);
 }

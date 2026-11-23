@@ -6,10 +6,12 @@ import com.fenglin.springboottest.entity.AvatarFoundation;
 import com.fenglin.springboottest.entity.CodexEntry;
 import com.fenglin.springboottest.entity.SparLog;
 import com.fenglin.springboottest.entity.UserCardView;
+import com.fenglin.springboottest.entity.UserCheckin;
 import com.fenglin.springboottest.entity.UserCultivation;
 import com.fenglin.springboottest.entity.UserGongfa;
 import com.fenglin.springboottest.mapper.SparLogMapper;
 import com.fenglin.springboottest.mapper.UserCardViewMapper;
+import com.fenglin.springboottest.mapper.UserCheckinMapper;
 import com.fenglin.springboottest.mapper.UserCultivationMapper;
 import com.fenglin.springboottest.mapper.UserGongfaMapper;
 import com.fenglin.springboottest.service.AvatarFoundationService;
@@ -29,7 +31,7 @@ import java.util.stream.Collectors;
 
 /**
  * 修炼系统服务实现。
- * 所有数值规则（境界阶梯 / 突破消耗 / 称号 / 秘境与切磋收益）统一取自 {@link CultivationRules}。
+ * 所有数值规则（境界阶梯 / 突破消耗 / 称号 / 秘境、切磋与签到收益）统一取自 {@link CultivationRules}。
  */
 @Service
 public class CultivationServiceImpl implements CultivationService {
@@ -45,6 +47,9 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Autowired
     private UserCardViewMapper cardViewMapper;
+
+    @Autowired
+    private UserCheckinMapper checkinMapper;
 
     @Autowired
     private AvatarFoundationService avatarService;
@@ -92,6 +97,20 @@ public class CultivationServiceImpl implements CultivationService {
                 .stream().map(UserGongfa::getGongfaName).collect(Collectors.toSet());
     }
 
+    /** 取签到记录；无则返回 null */
+    private UserCheckin getCheckin(Long userId) {
+        return checkinMapper.selectOne(
+                new QueryWrapper<UserCheckin>().eq("user_id", userId));
+    }
+
+    /** 当前连续签到天数（未签到 / 断签按 0 计，供前端展示） */
+    private int checkinStreak(UserCheckin rec, LocalDate today) {
+        if (rec == null || rec.getCheckinDate() == null) return 0;
+        if (rec.getCheckinDate().equals(today)) return rec.getStreak() == null ? 0 : rec.getStreak();
+        if (rec.getCheckinDate().equals(today.minusDays(1))) return rec.getStreak() == null ? 0 : rec.getStreak();
+        return 0;
+    }
+
     /** 状态总览（含功法阁与境界阶梯） */
     private Map<String, Object> buildStatus(AvatarFoundation af, UserCultivation uc) {
         Set<String> owned = ownedGongfa(af.getId());
@@ -124,6 +143,21 @@ public class CultivationServiceImpl implements CultivationService {
         spar.put("gain_power", CultivationRules.SPAR_GAIN_POWER);
         spar.put("gain_copper", CultivationRules.SPAR_GAIN_COPPER);
 
+        // 每日签到状态：今日是否已签、连续天数、今日可领铜币（含连签加成）
+        LocalDate today = LocalDate.now();
+        UserCheckin checkin = getCheckin(af.getId());
+        boolean checkedToday = checkin != null && today.equals(checkin.getCheckinDate());
+        int streak = checkinStreak(checkin, today);
+        int nextStreak = checkedToday ? streak : streak + 1;
+        Map<String, Object> checkinView = new LinkedHashMap<>();
+        checkinView.put("checked_today", checkedToday);
+        checkinView.put("streak", streak);
+        checkinView.put("base", CultivationRules.CHECKIN_BASE_COPPER);
+        checkinView.put("reward", checkedToday ? 0
+                : CultivationRules.CHECKIN_BASE_COPPER + CultivationRules.checkinBonus(nextStreak));
+        checkinView.put("bonus_next", CultivationRules.checkinBonus(nextStreak));
+        checkinView.put("total", checkin == null || checkin.getTotal() == null ? 0 : checkin.getTotal());
+
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", af.getDeityName());
         m.put("entry_name", af.getMythName() == null || af.getMythName().isBlank()
@@ -139,6 +173,7 @@ public class CultivationServiceImpl implements CultivationService {
         m.put("apex", CultivationRules.REALM_APEX.equals(realm));
         m.put("secret", secret);
         m.put("spar", spar);
+        m.put("checkin", checkinView);
         m.put("owned_gongfa", new ArrayList<>(owned));
         m.put("gongfa_shop", shop);
         m.put("ladder", CultivationRules.ladderView());
@@ -340,6 +375,56 @@ public class CultivationServiceImpl implements CultivationService {
         return cardViewMapper.selectList(
                         new QueryWrapper<UserCardView>().eq("user_id", userId).select("card_key"))
                 .stream().map(UserCardView::getCardKey).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> checkIn(AvatarFoundation af) {
+        LocalDate today = LocalDate.now();
+        UserCheckin rec = getCheckin(af.getId());
+        if (rec != null && today.equals(rec.getCheckinDate())) {
+            throw new CultivationException("今日已签到，明日再来");
+        }
+
+        // 昨天签过 → 续上连续天数；断签或首次 → 从第 1 天重新起算
+        int streak = checkinStreak(rec, today) + 1;
+        int bonus = CultivationRules.checkinBonus(streak);
+        int reward = CultivationRules.CHECKIN_BASE_COPPER + bonus;
+
+        int rows;
+        if (rec == null) {
+            UserCheckin init = new UserCheckin();
+            init.setUserId(af.getId());
+            init.setCheckinDate(today);
+            init.setStreak(streak);
+            init.setTotal(1);
+            try {
+                checkinMapper.insert(init);
+                rows = 1;
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // 并发首次签到：另一请求已建行，改走条件更新
+                rows = checkinMapper.claim(af.getId(), today, streak);
+            }
+        } else {
+            // 条件更新保证同一天只会有一个请求写入成功（防重复发奖）
+            rows = checkinMapper.claim(af.getId(), today, streak);
+        }
+        if (rows <= 0) {
+            throw new CultivationException("今日已签到，明日再来");
+        }
+
+        UserCultivation uc = getOrInit(af.getId());
+        uc.setCopper((uc.getCopper() == null ? 0 : uc.getCopper()) + reward);
+        cultivationMapper.updateById(uc);
+
+        UserCheckin after = getCheckin(af.getId());
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("reward", reward);
+        r.put("bonus", bonus);
+        r.put("streak", streak);
+        r.put("total", after == null || after.getTotal() == null ? 0 : after.getTotal());
+        r.put("cultivation", buildStatus(af, uc));
+        return r;
     }
 
     /** 修炼系统业务异常（由全局异常处理器转为 {ok:false,msg}） */

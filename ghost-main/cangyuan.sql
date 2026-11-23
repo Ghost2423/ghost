@@ -440,6 +440,20 @@ INSERT INTO `user_cultivation` VALUES (10, 2, '筑基', 0, 0, NULL, NULL, 0, '20
 INSERT INTO `user_cultivation` VALUES (11, 3, '筑基', 0, 0, NULL, NULL, 0, '2026-11-20 16:36:00', '2026-11-20 16:36:34');
 
 -- ----------------------------
+-- Table structure for user_checkin
+-- ----------------------------
+DROP TABLE IF EXISTS `user_checkin`;
+CREATE TABLE `user_checkin`  (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id` int UNSIGNED NOT NULL COMMENT 'avatar_foundation.id',
+  `checkin_date` date NULL DEFAULT NULL COMMENT '最近签到日期（每日一次）',
+  `streak` int NOT NULL DEFAULT 0 COMMENT '当前连续签到天数（断签重置）',
+  `total` int NOT NULL DEFAULT 0 COMMENT '累计签到天数',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_user`(`user_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '沧元图·每日签到' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for user_gongfa
 -- ----------------------------
 DROP TABLE IF EXISTS `user_gongfa`;

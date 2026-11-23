@@ -387,6 +387,11 @@ export function viewCard(cred, cardKey, cardName) {
   }))
 }
 
+/** 每日签到：POST /api/cultivation/check-in {name, spell}（每天一次，基础 +50 铜币） */
+export function dailyCheckIn(cred) {
+  return request('/api/cultivation/check-in', jsonPost({ ...cred }))
+}
+
 /* =============================================================
  * 太虚弈局（桌游）API（掷骰走格，获得铜币与神尊力）
  * ============================================================= */

@@ -107,6 +107,24 @@
               <button class="ac-btn gold" :disabled="busy || !sparTarget.trim()" @click="doSpar">切 磋</button>
             </div>
           </div>
+
+          <!-- 每日签到 -->
+          <div class="action-card">
+            <div class="ac-head">
+              <span class="ac-ico">☀</span>
+              <h3>每日签到</h3>
+            </div>
+            <p class="ac-desc" v-if="cul.checkin">
+              每日领 <b>{{ cul.checkin.base }}</b> 铜币，连续第 3 / 7 天额外 <b>+50 / +150</b>。
+              今日可领 <b>{{ cul.checkin.reward }}</b>，已连签 <b>{{ cul.checkin.streak }}</b> 天。
+            </p>
+            <p class="ac-desc" v-else>签到功能正在开启，稍后再来。</p>
+            <div class="ac-meter"><i :style="{ width: checkinPct + '%' }"></i></div>
+            <button class="ac-btn copper" :disabled="busy || !cul.checkin || cul.checkin.checked_today"
+                    @click="doCheckIn">
+              {{ cul.checkin && cul.checkin.checked_today ? '今 日 已 签' : '签 到 领 铜' }}
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -178,7 +196,7 @@
       </section>
     </main>
 
-    <footer class="foot">沧元图 · 修炼系统 —— 秘境淬体 · 功法参悟 · 切磋问道 · 境界通天</footer>
+    <footer class="foot">沧元图 · 修炼系统 —— 秘境淬体 · 功法参悟 · 切磋问道 · 每日签到 · 境界通天</footer>
 
     <!-- 突破特效 -->
     <transition name="fade">
@@ -200,7 +218,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchCultivation, secretTraining, sparWith, buyGongfa, breakthroughRealm } from '../api'
+import { fetchCultivation, secretTraining, sparWith, buyGongfa, breakthroughRealm, dailyCheckIn } from '../api'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
 defineEmits(['go-home'])
@@ -257,6 +275,16 @@ const progressPct = computed(() => {
   return Math.min(100, Math.round(cul.value.power / cul.value.break_cost * 100))
 })
 
+// 签到进度：已连续天数距下一个 3/7 天奖励节点的完成度
+const checkinPct = computed(() => {
+  const c = cul.value && cul.value.checkin
+  if (!c) return 0
+  const s = c.checked_today ? c.streak : c.streak + 1
+  const target = s % 7 === 0 ? 7 : (s <= 3 ? 3 : 7)
+  const base = target === 3 ? 0 : 3
+  return Math.min(100, Math.round((s - base) / (target - base) * 100))
+})
+
 const ladderGroups = computed(() => {
   if (!cul.value || !Array.isArray(cul.value.ladder)) return []
   const groups = []
@@ -291,6 +319,18 @@ async function doSpar() {
     sparTarget.value = ''
     toast(`与「${d.target}」切磋完毕，各得 ${d.gain_power} 神尊力 + ${d.gain_copper} 铜币`)
   } else toast(d.msg || '切磋失败')
+}
+
+async function doCheckIn() {
+  if (busy.value || !cul.value || !cul.value.checkin || cul.value.checkin.checked_today) return
+  busy.value = true
+  const d = await dailyCheckIn(cred())
+  busy.value = false
+  if (d.ok) {
+    cul.value = d.cultivation
+    const extra = d.bonus ? `（连签 ${d.streak} 天额外 +${d.bonus}）` : ''
+    toast(`签到得 ${d.reward} 铜币${extra}`)
+  } else toast(d.msg || '签到失败')
 }
 
 async function doBuy(g) {
@@ -412,7 +452,7 @@ function toast(msg) {
 .progress.apex p{font-size:14px;color:var(--gold);letter-spacing:2px;line-height:1.8}
 
 /* ===== 行动区 ===== */
-.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
 .action-card{padding:22px;border-radius:18px;background:var(--glass);
   border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(10px);transition:.2s}
 .action-card:hover{transform:translateY(-3px);border-color:var(--line);
@@ -431,6 +471,8 @@ function toast(msg) {
   box-shadow:0 10px 26px rgba(45,212,191,.35)}
 .ac-btn.gold{color:#04130f;background:linear-gradient(135deg,var(--gold),#f7f3e8);
   box-shadow:0 10px 26px rgba(233,196,106,.3);width:auto;padding:11px 22px;margin-top:14px}
+.ac-btn.copper{color:#2b1b04;background:linear-gradient(135deg,var(--gold),#ffe6a3);
+  box-shadow:0 10px 26px rgba(233,196,106,.28)}
 .ac-btn:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}
 .ac-btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
 .ac-meter{height:6px;border-radius:999px;background:rgba(7,11,22,.8);border:1px solid var(--line);

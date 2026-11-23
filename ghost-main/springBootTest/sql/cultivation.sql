@@ -6,6 +6,7 @@
 --   2) user_cultivation 用户修炼状态（境界/神尊力/铜币/称号/秘境次数）
 --   3) user_gongfa      用户已购功法
 --   4) spar_log         切磋记录
+--   5) user_checkin     每日签到（签到日期/连续天数/累计天数）
 -- =============================================================
 
 CREATE DATABASE IF NOT EXISTS cangyuan
@@ -80,6 +81,22 @@ CREATE TABLE IF NOT EXISTS user_cultivation (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='沧元图·修炼状态';
+
+-- -------------------------------------------------------------
+-- 2.1) 每日签到表（每账号一行；每天原子更新，防重复发奖）
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_checkin (
+  id           INT UNSIGNED NOT NULL AUTO_INCREMENT           COMMENT '主键',
+  user_id      INT UNSIGNED NOT NULL                          COMMENT 'avatar_foundation.id',
+  checkin_date DATE          DEFAULT NULL                     COMMENT '最近签到日期（每日一次）',
+  streak       INT           NOT NULL DEFAULT 0               COMMENT '当前连续签到天数（断签重置）',
+  total        INT           NOT NULL DEFAULT 0               COMMENT '累计签到天数',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_user (user_id)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='沧元图·每日签到';
 
 -- -------------------------------------------------------------
 -- 3) 用户已购功法表（每功法限购一次，永久持有）

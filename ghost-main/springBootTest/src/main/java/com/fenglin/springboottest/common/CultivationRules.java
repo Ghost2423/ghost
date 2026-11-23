@@ -30,6 +30,8 @@ import java.util.Map;
  * 秘境修炼：每次消耗 50 铜币；凡俗境界一次得 50 神尊力，神尊境界一次得 100 神尊力；每日 20 次
  * 切磋：双方各得 30 神尊力 + 300 铜币
  * 首页卡片首阅：每张卡片每账号首次点开 +50 铜币（记录于 user_card_view，唯一键防重复）
+ * 每日签到：每人每天一次，基础 +50 铜币；连续第 3 天额外 +50，第 7 天额外 +150，
+ *           此后每满 7 天再 +150（记录于 user_checkin，按日期原子更新防重复）
  */
 public final class CultivationRules {
 
@@ -78,6 +80,22 @@ public final class CultivationRules {
     /* ===== 首页卡片首阅 ===== */
     /** 每张卡片每账号首次点开奖励的铜币 */
     public static final int CARD_VIEW_REWARD_COPPER = 50;
+
+    /* ===== 每日签到 ===== */
+    /** 每日签到基础铜币 */
+    public static final int CHECKIN_BASE_COPPER = 50;
+    /** 连续第 3 天（及每满 3 天）额外铜币 */
+    public static final int CHECKIN_BONUS_3 = 50;
+    /** 连续第 7 天（及每满 7 天）额外铜币 */
+    public static final int CHECKIN_BONUS_7 = 150;
+
+    /** 连续签到第 N 天的额外铜币（7 天档优先于 3 天档） */
+    public static int checkinBonus(int streak) {
+        if (streak <= 0) return 0;
+        if (streak % 7 == 0) return CHECKIN_BONUS_7;
+        if (streak % 3 == 0) return CHECKIN_BONUS_3;
+        return 0;
+    }
 
     /* ===== 初始资产 ===== */
     public static final int INIT_COPPER = 200;
