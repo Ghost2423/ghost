@@ -53,19 +53,37 @@
         <main class="arena">
           <section class="board-wrap">
             <div class="board-head">
-              <h2>太虚棋局</h2>
-              <span>掷骰行棋 · 落格得宝 · 登临神位</span>
+              <h2>太虚棋局 · 飞行棋</h2>
+              <span>掷六起飞 · 同色飞跃 · 撞妖夺赏 · 四机登顶</span>
             </div>
             <div class="board">
               <div v-for="cell in bg.board" :key="cell.index" class="cell"
-                   :class="['t-' + cell.type.toLowerCase(), { here: cur && cur.position === cell.index, finish: cell.type === 'FINISH' }]">
+                   :class="['t-' + cell.type.toLowerCase(), 'color-' + cell.color,
+                            { here: cur && myPlanes.includes(cell.index), finish: cell.type === 'FINISH' }]">
                 <span class="cell-idx">{{ cell.index }}</span>
                 <span class="cell-icon">{{ cell.icon }}</span>
                 <span class="cell-name">{{ cell.name }}</span>
                 <span class="cell-gain" v-if="cell.copper">◉{{ cell.copper }}</span>
                 <span class="cell-gain pw" v-if="cell.power">⚡{{ cell.power }}</span>
-                <span class="pawn" v-if="cur && cur.position === cell.index">我</span>
+                <span class="guard" v-if="cur && cur.guards && flight && flight.guard_cells.includes(cell.index) && cur.guards[flight.guard_cells.indexOf(cell.index)]"
+                      title="劫妖守军：撞破得赏赐">☠</span>
+                <template v-for="(p, pi) in myPlanes" :key="'p'+pi">
+                  <span v-if="p === cell.index" class="plane"
+                        :class="['plane-'+pi, { sel: selectedPlane === pi }]"
+                        :style="{ '--pc': (planeMeta[pi] && planeMeta[pi].color) || '#fff' }">{{ pi + 1 }}</span>
+                </template>
               </div>
+            </div>
+            <!-- 4 架飞机状态选择 -->
+            <div class="plane-dock" v-if="cur && cur.status === 'playing'">
+              <button v-for="(p, pi) in myPlanes" :key="'dock'+pi" class="plane-chip"
+                      :class="['plane-'+pi, { sel: selectedPlane === pi, done: planeDone(p), hangar: p === HANGAR }]"
+                      :style="{ '--pc': (planeMeta[pi] && planeMeta[pi].color) || '#fff' }"
+                      :disabled="busy || planeDone(p)" @click="selectPlane(pi)">
+                <span class="pc-ico">{{ planeMeta[pi] && planeMeta[pi].icon }}</span>
+                <span class="pc-name">{{ planeMeta[pi] && planeMeta[pi].name }}</span>
+                <span class="pc-pos">{{ planeLabel(p) }}</span>
+              </button>
             </div>
             <div class="legend">
               <span><i class="dot c-copper"></i>铜币</span><span><i class="dot c-power"></i>神尊力</span>
@@ -80,16 +98,17 @@
               <template v-if="cur && cur.status === 'playing'">
                 <div class="play-head"><span class="live-dot"></span> 对局进行中</div>
                 <div class="play-progress">
-                  <div class="pp-bar"><i :style="{ width: Math.round(cur.position / (bg.board_size - 1) * 100) + '%' }"></i></div>
-                  <div class="pp-meta"><span>第 {{ cur.rolls }} / {{ bg.max_rolls }} 掷</span><span>距神位 {{ Math.max(0, bg.board_size - 1 - cur.position) }} 格</span></div>
+                  <div class="pp-bar"><i :style="{ width: Math.round(planeDoneCount / 4 * 100) + '%' }"></i></div>
+                  <div class="pp-meta"><span>第 {{ cur.rolls }} / {{ bg.max_rolls }} 掷</span><span>登顶 {{ planeDoneCount }} / 4 机</span></div>
                 </div>
+                <p class="sel-tip">当前操作：<b :style="{ color: (planeMeta[selectedPlane] && planeMeta[selectedPlane].color) || '' }">{{ planeMeta[selectedPlane] && planeMeta[selectedPlane].icon }} {{ planeMeta[selectedPlane] && planeMeta[selectedPlane].name }}</b>（点上方飞机切换）</p>
                 <div class="dice" :class="{ rolling: rolling }">{{ rolling ? '⚄' : diceFace }}</div>
                 <button class="big-btn" :disabled="busy || rolling" @click="doRoll">{{ rolling ? '骰子转动中…' : '掷 骰 行 棋' }}</button>
                 <p class="play-tip">本局已得 ◉{{ cur.gain_copper }} · ⚡{{ cur.gain_power }}<span v-if="cur.ward"> · 🛡护体</span></p>
               </template>
               <template v-else>
-                <div class="play-head ready">太虚弈局</div>
-                <p class="intro">掷骰行棋，落格收获铜币与神尊力；抵达「登临神位」通关，另得 <b>◉150</b> 与 <b>⚡100</b> 大奖。棋局中有「奇珍阁」「元初宝匣」道具格，可拾取道具。</p>
+                <div class="play-head ready">太虚弈局 · 飞行棋</div>
+                <p class="intro">四架飞机自机坪起飞：<b>掷出六点</b>方可起飞并再掷一次；落在<b>同色格</b>飞跃四步；撞破<b>劫妖</b>得赏赐 ◉{{ (flight && flight.guard_bonus) || 25 }}；点数超出终点原路反弹，须<b>精确</b>落在神位。四机全部登顶即通关，另得 <b>◉150</b> 与 <b>⚡100</b> 大奖。</p>
                 <p class="cost-line">入局需 <b>◉ {{ bg.entry_fee }} 铜币</b> 报名</p>
                 <button class="big-btn" :disabled="busy || bg.daily_left <= 0 || bg.asset.copper < bg.entry_fee" @click="doStart">
                   {{ bg.daily_left <= 0 ? '今日次数已尽' : (bg.asset.copper < bg.entry_fee ? '铜币不足' : '入 局 开 弈') }}
@@ -113,7 +132,8 @@
 
             <transition name="pop">
               <div class="side-card result-card" v-if="lastRoll">
-                <div class="rc-head">上一掷 · {{ lastRoll.dice }} 点<template v-if="lastRoll.item_name"> · 得 {{ lastRoll.item_name }}</template><template v-if="lastRoll.ward_used"> · 🛡抵消劫难</template></div>
+                <div class="rc-head">上一掷 · {{ lastRoll.plane_name || ('第' + ((lastRoll.plane || 0) + 1) + '机') }} {{ lastRoll.dice }} 点<template v-if="lastRoll.item_name"> · 得 {{ lastRoll.item_name }}</template><template v-if="lastRoll.ward_used"> · 🛡抵消劫难</template></div>
+                <div class="rc-special" v-if="lastRoll.special">{{ lastRoll.special }}</div>
                 <div class="rc-body">
                   <span class="rc-cell">{{ lastRoll.cell_icon }} {{ lastRoll.cell_name }}</span>
                   <span class="rc-gains">
@@ -140,18 +160,37 @@
         <main class="arena">
           <section class="board-wrap">
             <div class="board-head">
-              <h2>论剑棋枰</h2>
-              <span>双雄逐鹿 · 先登神位者胜 · 奖池归赢家</span>
+              <h2>论剑棋枰 · 飞行棋</h2>
+              <span>掷六起飞 · 同色飞跃 · 撞子回坪 · 四机登顶者胜</span>
             </div>
             <div class="board">
               <div v-for="cell in (bg.board || [])" :key="cell.index" class="cell"
-                   :class="['t-' + cell.type.toLowerCase(), { finish: cell.type === 'FINISH' }]">
+                   :class="['t-' + cell.type.toLowerCase(), 'color-' + cell.color,
+                            { finish: cell.type === 'FINISH',
+                              here: pvMatch && ((isChallenger ? pvMatch.challenger_planes : pvMatch.defender_planes) || []).includes(cell.index) }]">
                 <span class="cell-idx">{{ cell.index }}</span>
                 <span class="cell-icon">{{ cell.icon }}</span>
                 <span class="cell-name">{{ cell.name }}</span>
-                <span class="pawn pawn-a" v-if="pvMatch && pvMatch.challenger_pos === cell.index" :class="{ mine: isChallenger }">我</span>
-                <span class="pawn pawn-b" v-if="pvMatch && pvMatch.defender_pos === cell.index" :class="{ mine: !isChallenger }" style="right:auto;left:-6px">敌</span>
+                <template v-for="(p, pi) in (pvMatch ? pvMatch.challenger_planes : [])" :key="'ca'+pi">
+                  <span v-if="p === cell.index" class="plane plane-0" :class="{ enemy: !isChallenger, sel: isChallenger && selectedPlane === pi }"
+                        style="--pc:#e9c46a">挑{{ pi + 1 }}</span>
+                </template>
+                <template v-for="(p, pi) in (pvMatch ? pvMatch.defender_planes : [])" :key="'de'+pi">
+                  <span v-if="p === cell.index" class="plane plane-2" :class="{ enemy: isChallenger, sel: !isChallenger && selectedPlane === pi }"
+                        style="--pc:#ef4454">应{{ pi + 1 }}</span>
+                </template>
               </div>
+            </div>
+            <!-- PVP 我方飞机选择 -->
+            <div class="plane-dock" v-if="pvMatch && pvMatch.status === 'playing'">
+              <button v-for="(p, pi) in myPlanes" :key="'pv-dock'+pi" class="plane-chip"
+                      :class="['plane-'+pi, { sel: selectedPlane === pi, done: planeDone(p), hangar: p === HANGAR }]"
+                      :style="{ '--pc': (planeMeta[pi] && planeMeta[pi].color) || '#fff' }"
+                      :disabled="pvpBusy || !myTurn || planeDone(p)" @click="selectPlane(pi)">
+                <span class="pc-ico">{{ planeMeta[pi] && planeMeta[pi].icon }}</span>
+                <span class="pc-name">{{ planeMeta[pi] && planeMeta[pi].name }}</span>
+                <span class="pc-pos">{{ planeLabel(p) }}</span>
+              </button>
             </div>
             <div class="legend"><span><i class="dot c-copper"></i>铜币</span><span><i class="dot c-power"></i>神尊力</span><span><i class="dot c-boon"></i>双得</span><span><i class="dot c-item"></i>道具</span><span><i class="dot c-peril"></i>劫难</span><span><i class="dot c-finish"></i>终点</span></div>
           </section>
@@ -163,17 +202,17 @@
               <div class="duel-row">
                 <div class="duel-side" :class="{ active: pvMatch.turn === 'challenger' }">
                   <span class="duel-name">{{ pvMatch.challenger_name }}</span>
-                  <span class="duel-pos">格 {{ pvMatch.challenger_pos }}</span>
+                  <span class="duel-pos">登顶 {{ (pvMatch.challenger_planes || []).filter(p => p === ((pv.value.flight && pv.value.flight.finish_pos) || 15)).length }} / 4</span>
                   <span class="duel-roll">{{ pvMatch.challenger_rolls }} 掷</span>
                 </div>
                 <span class="duel-vs">VS</span>
                 <div class="duel-side" :class="{ active: pvMatch.turn === 'defender' }">
                   <span class="duel-name">{{ pvMatch.defender_name }}</span>
-                  <span class="duel-pos">格 {{ pvMatch.defender_pos }}</span>
+                  <span class="duel-pos">登顶 {{ (pvMatch.defender_planes || []).filter(p => p === ((pv.value.flight && pv.value.flight.finish_pos) || 15)).length }} / 4</span>
                   <span class="duel-roll">{{ pvMatch.defender_rolls }} 掷</span>
                 </div>
               </div>
-              <div class="turn-tip">{{ myTurn ? '轮到你了' : (pvMatch.defender_ai ? '天道正在推演…' : '静待对手行棋') }}</div>
+              <div class="turn-tip">{{ myTurn ? '轮到你了（点选飞机后掷骰）' : (pvMatch.defender_ai ? '天道正在推演…' : '静待对手行棋') }}</div>
               <div class="dice small" :class="{ rolling: pvpRolling }">{{ pvpRolling ? '⚄' : pvpDice }}</div>
               <button class="big-btn" :disabled="pvpBusy || !myTurn" @click="doPvpRoll">{{ !myTurn ? '待对手行棋…' : '掷 骰 论 剑' }}</button>
               <p class="play-tip">奖池 ◉{{ pvMatch.pot }} · 胜者得 ◉{{ pv.entry_fee * 2 }} + 赏赐</p>
@@ -182,7 +221,7 @@
             <!-- 创建挑战 -->
             <div class="side-card play-card" v-else>
               <div class="play-head ready">擂台论剑</div>
-              <p class="intro">发起挑战需 <b>◉{{ pv.entry_fee }} 铜币</b>，天道或对手同注，奖池归胜者。先抵达「登临神位」者获胜。</p>
+              <p class="intro">发起挑战需 <b>◉{{ pv.entry_fee }} 铜币</b>，天道或对手同注，奖池归胜者。飞行棋规则：掷六起飞、同色飞跃、撞子送回机坪，<b>四机全部登顶</b>者获胜。</p>
               <label class="field-label">挑战方式</label>
               <div class="pv-opts">
                 <button :class="{ on: versusAi }" @click="versusAi = true">🤖 天道·无极</button>
@@ -283,7 +322,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   fetchBoardGame, startBoardGame, rollBoardGame, fetchBoardGameRank,
   fetchBoardItems, useBoardItem, fetchPvpStatus, fetchPvpList, createPvp, acceptPvp, rollPvp
@@ -335,6 +374,44 @@ const opponentName = ref('')
 
 const cur = computed(() => bg.value && bg.value.current)
 const myItems = computed(() => (bg.value && bg.value.items) || [])
+
+/* ===== 飞行棋：4 架飞机 ===== */
+const flight = computed(() => (bg.value && bg.value.flight) || (pv.value && pv.value.flight) || null)
+const planeMeta = computed(() => (flight.value && flight.value.plane_meta) || [])
+const HANGAR = -1
+const FINISH_POS = computed(() => (flight.value && flight.value.finish_pos) || ((bg.value?.board_size || 16) - 1))
+function planeAt(pos, planeIdx) {
+  return pos >= 0 && pos === planeIdx ? true : false
+}
+/** 当前对局飞机位置（单人 / PVP 我方） */
+const myPlanes = computed(() => {
+  if (mode.value === 'pvp') {
+    return (pvMatch.value && (isChallenger.value
+      ? pvMatch.value.challenger_planes : pvMatch.value.defender_planes)) || []
+  }
+  return (cur.value && cur.value.planes) || []
+})
+/** 对方飞机位置（PVP） */
+const foePlanes = computed(() => {
+  if (mode.value === 'pvp' && pvMatch.value) {
+    return isChallenger.value ? pvMatch.value.defender_planes : pvMatch.value.challenger_planes
+  }
+  return []
+})
+/** 当前选中的飞机（本地即时选中，后端也会记住） */
+const selectedPlane = ref(0)
+watch(cur, (g) => { if (g && g.active_plane != null) selectedPlane.value = g.active_plane })
+watch(pvMatch, (m) => {
+  if (m) selectedPlane.value = isChallenger.value
+    ? (m.challenger_active || 0) : (m.defender_active || 0)
+})
+function selectPlane(i) {
+  if (busy.value || pvpBusy.value) return
+  selectedPlane.value = i
+}
+function planeDone(pos) { return pos === FINISH_POS.value }
+function planeLabel(pos) { return pos === HANGAR ? '机坪' : (planeDone(pos) ? '登顶' : ('格' + pos)) }
+const planeDoneCount = computed(() => myPlanes.value.filter(planeDone).length)
 const rankRows = computed(() => {
   if (!rank.value) return []
   if (rankTab.value === 'wins') return rank.value.by_wins || []
@@ -402,7 +479,7 @@ async function doRoll() {
   const faces = ['⚀','⚁','⚂','⚃','⚄','⚅']
   let ticks = 0
   const timer = setInterval(() => { diceFace.value = faces[Math.floor(Math.random()*6)]; if (++ticks > 14) clearInterval(timer) }, 70)
-  const d = await rollBoardGame(cred())
+  const d = await rollBoardGame(cred(), selectedPlane.value)
   await new Promise(r => setTimeout(r, 850))
   clearInterval(timer); rolling.value = false; busy.value = false
   if (d.ok) {
@@ -416,7 +493,8 @@ async function doRoll() {
     const g = d.gain_copper ? `${d.gain_copper > 0 ? '+' : ''}${d.gain_copper} 铜币 ` : ''
     const p = d.gain_power ? `${d.gain_power > 0 ? '+' : ''}${d.gain_power} 神尊力` : ''
     const item = d.item_name ? ` 得【${d.item_name}】` : ''
-    toast(d.finished ? (d.pass === 1 ? '登临神位！' : '行棋已尽') : `掷出 ${d.dice} 点，落「${d.cell_name}」${g}${p}${item}`)
+    const sp = d.special ? ` · ${d.special}` : ''
+    toast(d.finished ? (d.pass === 1 ? '四机登顶，登临神位！' : '掷骰已尽') : `掷出 ${d.dice} 点，落「${d.cell_name}」${g}${p}${item}${sp}`)
   } else toast(d.msg || '掷骰失败')
 }
 
@@ -457,7 +535,7 @@ async function doPvpRoll() {
   const faces = ['⚀','⚁','⚂','⚃','⚄','⚅']
   let ticks = 0
   const timer = setInterval(() => { pvpDice.value = faces[Math.floor(Math.random()*6)]; if (++ticks > 14) clearInterval(timer) }, 70)
-  const d = await rollPvp({ ...cred(), match_id: pvMatch.value.id })
+  const d = await rollPvp({ ...cred(), match_id: pvMatch.value.id, plane_index: selectedPlane.value })
   await new Promise(r => setTimeout(r, 850))
   clearInterval(timer); pvpRolling.value = false; pvpBusy.value = false
   if (d.ok) {
@@ -579,6 +657,36 @@ function toast(msg) {
 .pawn-a{background:linear-gradient(135deg,#e9c46a,#b8862b)}.pawn-a.mine{box-shadow:0 0 0 2px #e8eef7,0 0 16px rgba(233,196,106,.8)}
 .pawn-b{background:linear-gradient(135deg,#2dd4bf,#0f766e);color:#04130f;box-shadow:0 0 14px rgba(45,212,191,.6)}.pawn-b.mine{box-shadow:0 0 0 2px #e8eef7,0 0 16px rgba(45,212,191,.8)}
 @keyframes pawnPulse{50%{transform:scale(1.15)}}
+
+/* ===== 飞行棋：格子颜色 / 飞机棋子 / 选机坞 ===== */
+.cell.color-0{box-shadow:inset 3px 3px 0 rgba(45,212,191,.35)}
+.cell.color-1{box-shadow:inset 3px 3px 0 rgba(233,196,106,.35)}
+.cell.color-2{box-shadow:inset 3px 3px 0 rgba(239,68,84,.35)}
+.cell.color-3{box-shadow:inset 3px 3px 0 rgba(232,238,247,.30)}
+.cell.here.color-0{box-shadow:0 0 0 2px #2dd4bf,0 0 28px rgba(45,212,191,.35)}
+.cell.here.color-1{box-shadow:0 0 0 2px #e9c46a,0 0 28px rgba(233,196,106,.35)}
+.cell.here.color-2{box-shadow:0 0 0 2px #ef4454,0 0 28px rgba(239,68,84,.35)}
+.cell.here.color-3{box-shadow:0 0 0 2px #e8eef7,0 0 28px rgba(232,238,247,.3)}
+.guard{position:absolute;top:4px;right:6px;font-size:14px;color:#ef4454;text-shadow:0 0 10px rgba(239,68,84,.9);animation:pawnPulse 1.6s ease-in-out infinite}
+.plane{position:absolute;bottom:3px;right:3px;min-width:20px;height:20px;padding:0 4px;border-radius:6px;
+  background:var(--pc);color:#04130f;font-size:10px;font-weight:900;display:grid;place-items:center;
+  box-shadow:0 0 10px var(--pc);border:1px solid rgba(255,255,255,.6);z-index:4;font-family:inherit}
+.plane.enemy{border-color:#04130f;opacity:.92}
+.plane.sel{outline:2px solid #fff;outline-offset:1px}
+.plane-dock{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;justify-content:center}
+.plane-chip{display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;cursor:pointer;
+  background:rgba(7,11,22,.7);border:1px solid rgba(255,255,255,.16);color:#e8eef7;font-family:inherit;
+  font-size:11px;letter-spacing:.5px;transition:.16s}
+.plane-chip .pc-ico{color:var(--pc);font-size:14px}
+.plane-chip .pc-name{font-weight:700}
+.plane-chip .pc-pos{color:#9fb0c8}
+.plane-chip.sel{border-color:var(--pc);background:rgba(255,255,255,.08);box-shadow:0 0 16px var(--pc)}
+.plane-chip.done{opacity:.5;cursor:default;border-color:#2dd4bf}
+.plane-chip.hangar .pc-pos{color:#ef4454}
+.plane-chip:disabled{opacity:.45;cursor:not-allowed}
+.sel-tip{font-size:12px;color:#9fb0c8;letter-spacing:1px;margin:2px 0 8px}
+.sel-tip b{font-weight:800}
+.rc-special{font-size:12px;color:#e9c46a;letter-spacing:.5px;margin-top:4px}
 
 .legend{display:flex;flex-wrap:wrap;gap:15px;margin-top:16px;padding-top:13px;border-top:1px dashed rgba(255,255,255,.16)}
 .legend span{display:flex;align-items:center;gap:6px;font-size:11px;color:#9fb0c8;letter-spacing:1px}

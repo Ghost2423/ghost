@@ -22,8 +22,20 @@ public class BoardGameLog {
     /** playing=进行中 / finished=已结束 */
     private String status;
 
-    /** 当前所在格（0 起） */
+    /** 当前所在格（0 起，取最靠前飞机位置，兼容旧展示） */
     private Integer position;
+
+    /** 飞行棋 4 架飞机位置："-1,-1,3,15"（-1=停机坪，15=终点） */
+    private String planeStates;
+
+    /** 飞行棋劫妖守军存活："1,0"（1=存活） */
+    private String guards;
+
+    /** 飞行棋当前选中飞机编号 0..3 */
+    private Integer activePlane;
+
+    /** 掷出 6 点可再掷一次：1=是 */
+    private Integer extraRoll;
 
     /** 已掷骰次数 */
     private Integer rolls;
@@ -55,6 +67,14 @@ public class BoardGameLog {
     public void setStatus(String status) { this.status = status; }
     public Integer getPosition() { return position; }
     public void setPosition(Integer position) { this.position = position; }
+    public String getPlaneStates() { return planeStates; }
+    public void setPlaneStates(String planeStates) { this.planeStates = planeStates; }
+    public String getGuards() { return guards; }
+    public void setGuards(String guards) { this.guards = guards; }
+    public Integer getActivePlane() { return activePlane; }
+    public void setActivePlane(Integer activePlane) { this.activePlane = activePlane; }
+    public Integer getExtraRoll() { return extraRoll; }
+    public void setExtraRoll(Integer extraRoll) { this.extraRoll = extraRoll; }
     public Integer getRolls() { return rolls; }
     public void setRolls(Integer rolls) { this.rolls = rolls; }
     public String getDiceLog() { return diceLog; }

@@ -411,9 +411,9 @@ export function startBoardGame(cred) {
   return request('/api/boardgame/start', jsonPost({ ...cred }))
 }
 
-/** 掷骰一步：POST /api/boardgame/roll {name, spell}（结算收益入库） */
-export function rollBoardGame(cred) {
-  return request('/api/boardgame/roll', jsonPost({ ...cred }))
+/** 飞行棋行棋：POST /api/boardgame/roll {name, spell, plane_index}（结算收益入库） */
+export function rollBoardGame(cred, planeIndex) {
+  return request('/api/boardgame/roll', jsonPost({ ...cred, plane_index: planeIndex }))
 }
 
 /** 排行榜：GET /api/boardgame/rank -> {ok, by_wins, by_copper, by_pvp} */

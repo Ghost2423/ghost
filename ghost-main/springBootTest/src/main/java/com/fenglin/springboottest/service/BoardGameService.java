@@ -18,8 +18,8 @@ public interface BoardGameService {
     Map<String, Object> status(AvatarFoundation af);
     /** 开局 */
     Map<String, Object> start(AvatarFoundation af);
-    /** 掷骰一步 */
-    Map<String, Object> roll(AvatarFoundation af);
+    /** 飞行棋掷骰行棋（planeIndex 为本次操作的飞机 0..3，null 则自动选） */
+    Map<String, Object> roll(AvatarFoundation af, Integer planeIndex);
     /** 历史战绩 */
     Map<String, Object> history(AvatarFoundation af);
     /** 排行榜（登顶榜 + 财富榜 + PVP名将榜） */
@@ -38,8 +38,8 @@ public interface BoardGameService {
     Map<String, Object> pvpCreate(AvatarFoundation af, String opponentName, boolean versusAi);
     /** 应战（领取等待中的挑战） */
     Map<String, Object> pvpAccept(AvatarFoundation af, Long matchId);
-    /** PVP 掷骰一步（若轮到天道AI，服务端自动代掷至回到玩家或结束） */
-    Map<String, Object> pvpRoll(AvatarFoundation af, Long matchId);
+    /** PVP 飞行棋掷骰（planeIndex 为本次操作的飞机，null 自动选；天道AI自动代掷） */
+    Map<String, Object> pvpRoll(AvatarFoundation af, Long matchId, Integer planeIndex);
     /** 可应战的挑战列表 */
     Map<String, Object> pvpList(AvatarFoundation af);
 }

@@ -24,6 +24,8 @@ public class BoardGameRequest {
     private Boolean versusAi;
     /** 要使用的道具标识 */
     private String itemKey;
+    /** 飞行棋：本次操作的飞机编号 0..3 */
+    private Integer planeIndex;
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -39,4 +41,6 @@ public class BoardGameRequest {
     public void setVersusAi(Boolean versusAi) { this.versusAi = versusAi; }
     public String getItemKey() { return itemKey; }
     public void setItemKey(String itemKey) { this.itemKey = itemKey; }
+    public Integer getPlaneIndex() { return planeIndex; }
+    public void setPlaneIndex(Integer planeIndex) { this.planeIndex = planeIndex; }
 }

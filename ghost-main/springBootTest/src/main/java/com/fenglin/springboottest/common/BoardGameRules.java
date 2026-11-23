@@ -7,25 +7,23 @@ import java.util.LinkedHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 沧元图 · 太虚弈局（桌游）规则（唯一事实源）
+ * 沧元图 · 太虚弈局规则（唯一事实源）—— 飞行棋规则版
  *
- * 玩法：掷骰走格子。花铜币报名 -> 逐次掷骰(1~6)前进 -> 落到不同格子结算收益 ->
- *       抵达/越过终点「登临神位」即通关，领取通关大奖；掷骰次数用尽仍未到终点则本局结束。
- * 产出：铜币与神尊力会在落格 / 通关时直接写入 user_cultivation（真实入库）。
+ * 玩法：花铜币报名 -> 每方 4 架飞机停于机坪 -> 掷骰 6 点起飞至起点 ->
+ *       同色格跳跃飞行 -> 撞子送回机坪 -> 精确点数进入终点 ->
+ *       4 架飞机全部登临神位即通关，领取通关大奖。
  *
- * 格子类型：
- *   START  起点（太极门，无结算）
- *   COPPER 铜币格（得铜币）
- *   POWER  神尊力格（得神尊力）
- *   BOON   秘境格（铜币 + 神尊力双得）
- *   FORTUNE 福缘格（随机：铜币或神尊力）
- *   PERIL  劫难格（损失铜币或神尊力，但不低于 0）
- *   ITEM   道具格（随机获得一件道具，存入背包）
- *   FINISH 终点（登临神位，通关大奖）
+ * 飞行棋核心：
+ *   - 停机坪 HANGAR(-1)，掷出 6 点方可起飞到起点 0，并可再掷一次（PVP 中不换手）；
+ *   - 格子颜色 = index % 4，飞机颜色 = 自身编号；落同色格额外飞跃 4 格（不越过终点）；
+ *   - 落点与敌方飞机重合 -> 敌机送回机坪（PVP）；单人局棋盘「劫妖」守军被撞破可得赏赐；
+ *   - 点数超过终点则原路反弹，必须精确落在终点才算登临；
+ *   - 4 架飞机全部登临即胜。掷骰次数用尽仍未全部登顶则本局结束。
  *
- * 防刷：需报名费 30 铜币；每日最多 10 局；每局最多 20 次掷骰。
+ * 收益：落地格 / 撞妖 / 通关的铜币与神尊力直接写入 user_cultivation（真实入库）。
  *
- * PVP 擂台：报名费 50 铜币/方，奖池归胜者；先到终点者胜，途中落格收益各自入库。
+ * 防刷：需报名费 30 铜币；每日最多 10 局；每局最多 60 次掷骰。
+ * PVP 擂台：报名费 50 铜币/方，奖池归胜者；4 架飞机先全部登顶者胜。
  * 道具：leap 缩地符（前进3格）、coin 聚宝符（+60铜币）、rain 甘霖符（+25神尊力）、
  *       ward 镇厄符（免疫下一次劫难）。落道具格随机得一件。
  */
@@ -37,8 +35,8 @@ public final class BoardGameRules {
     public static final int ENTRY_FEE_COPPER = 30;
     /** 每日最多对局数 */
     public static final int DAILY_LIMIT = 10;
-    /** 每局最多掷骰次数 */
-    public static final int MAX_ROLLS = 20;
+    /** 每局最多掷骰次数（4 架飞机需更多回合） */
+    public static final int MAX_ROLLS = 60;
     /** 棋盘格数（0..BOARD_SIZE-1，最后一格为终点） */
     public static final int BOARD_SIZE = 16;
 
@@ -46,11 +44,100 @@ public final class BoardGameRules {
     /** PVP 报名费（铜币，双方各出） */
     public static final int PVP_ENTRY_FEE = 50;
     /** PVP 每方最多掷骰次数 */
-    public static final int PVP_MAX_ROLLS = 25;
+    public static final int PVP_MAX_ROLLS = 80;
     /** PVP 每日最多场次（按发起方计） */
     public static final int PVP_DAILY_LIMIT = 5;
     /** PVP 获胜额外奖励 */
     public static final int PVP_WIN_COPPER = 100, PVP_WIN_POWER = 50;
+
+    /* ===== 飞行棋机制 ===== */
+    /** 每方飞机数量 */
+    public static final int PLANES = 4;
+    /** 停机坪位置（未起飞） */
+    public static final int HANGAR = -1;
+    /** 终点格位置（棋盘最后一格） */
+    public static final int FINISH_POS = BOARD_SIZE - 1;
+    /** 起飞所需点数 */
+    public static final int TAKEOFF_ROLL = 6;
+    /** 同色格飞跃步数 */
+    public static final int SAME_COLOR_JUMP = 4;
+    /** 单人局「劫妖」守军所在格（落在这些格撞破守军得赏赐） */
+    public static final int[] GUARD_CELLS = {5, 9};
+    /** 撞破劫妖赏赐铜币 */
+    public static final int GUARD_BOUNTY_COPPER = 25;
+
+    /** 飞机外观（编号即颜色） */
+    private static final List<Map<String, Object>> PLANE_META = buildPlaneMeta();
+    private static List<Map<String, Object>> buildPlaneMeta() {
+        String[][] defs = {
+                {"0", "青鸾", "✦", "#2dd4bf", "青"},
+                {"1", "金乌", "◈", "#e9c46a", "金"},
+                {"2", "赤凰", "❖", "#ef4454", "赤"},
+                {"3", "白鹤", "◇", "#e8eef7", "白"}
+        };
+        List<Map<String, Object>> l = new ArrayList<>();
+        for (String[] d : defs) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("index", Integer.parseInt(d[0]));
+            m.put("name", d[1]); m.put("icon", d[2]);
+            m.put("color", d[3]); m.put("color_name", d[4]);
+            l.add(m);
+        }
+        return List.copyOf(l);
+    }
+    public static List<Map<String, Object>> planeMetaView() { return PLANE_META; }
+
+    /** 飞机颜色 = 自身编号（0..3） */
+    public static int planeColor(int planeIndex) { return planeIndex % 4; }
+    /** 格子颜色 = 格号 % 4 */
+    public static int cellColor(int index) { return index % 4; }
+    /** 同色飞跃目标格；不越过终点，非同色或已在终点则返回原格 */
+    public static int jumpTarget(int pos, int planeIndex) {
+        if (pos < 0 || pos >= FINISH_POS) return pos;
+        if (cellColor(pos) != planeColor(planeIndex)) return pos;
+        int to = pos + SAME_COLOR_JUMP;
+        return to > FINISH_POS ? FINISH_POS : to;
+    }
+    /** 行棋落点：超过终点则原路反弹 */
+    public static int movedTo(int from, int dice) {
+        int raw = from + dice;
+        if (raw <= FINISH_POS) return raw;
+        return Math.max(0, FINISH_POS - (raw - FINISH_POS));
+    }
+    /** 解析飞机位置串（如 "-1,-1,3,15"）为 4 个位置 */
+    public static int[] parsePlanes(String s) {
+        int[] a = new int[PLANES];
+        for (int i = 0; i < PLANES; i++) a[i] = HANGAR;
+        if (s == null || s.isBlank()) return a;
+        String[] parts = s.split(",");
+        for (int i = 0; i < Math.min(parts.length, PLANES); i++) {
+            try { a[i] = Integer.parseInt(parts[i].trim()); } catch (NumberFormatException ignored) { }
+        }
+        return a;
+    }
+    /** 4 个位置序列化为逗号串 */
+    public static String formatPlanes(int[] a) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < PLANES; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(a[i]);
+        }
+        return sb.toString();
+    }
+    /** 是否全部飞机登临终点 */
+    public static boolean allFinished(int[] a) {
+        for (int p : a) if (p != FINISH_POS) return false;
+        return true;
+    }
+    /** 劫妖守军初始状态串（1=存活），长度与 GUARD_CELLS 一致 */
+    public static String initialGuards() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < GUARD_CELLS.length; i++) {
+            if (i > 0) sb.append(',');
+            sb.append('1');
+        }
+        return sb.toString();
+    }
 
     /* ===== 格子类型 ===== */
     public static final String T_START = "START";
@@ -149,7 +236,7 @@ public final class BoardGameRules {
         return BOARD.get(index);
     }
 
-    /** 前端展示用：完整棋盘 */
+    /** 前端展示用：完整棋盘（含格子颜色） */
     public static List<Map<String, Object>> boardView() {
         List<Map<String, Object>> list = new ArrayList<>();
         for (Cell c : BOARD) {
@@ -161,6 +248,7 @@ public final class BoardGameRules {
             m.put("desc", c.desc);
             m.put("copper", c.copper);
             m.put("power", c.power);
+            m.put("color", cellColor(c.index));
             list.add(m);
         }
         return list;

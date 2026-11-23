@@ -21,7 +21,7 @@ import java.util.Map;
  *
  * - GET  /api/boardgame/status?name=   桌游状态总览（棋盘/报名费/每日次数/当前对局/战绩）
  * - POST /api/boardgame/start  {name, spell}  开局（扣 30 铜币报名费）
- * - POST /api/boardgame/roll   {name, spell}  掷骰一步（服务端权威结算，收益入库）
+ * - POST /api/boardgame/roll   {name, spell, plane_index}  飞行棋掷骰行棋（服务端权威结算，收益入库）
  * - GET  /api/boardgame/history?name=  历史战绩
  * - GET  /api/boardgame/rank           排行榜（登顶榜 / 财富榜 / PVP名将榜）
  * - GET  /api/boardgame/items?name=    道具背包与图鉴
@@ -30,7 +30,7 @@ import java.util.Map;
  * - GET  /api/boardgame/pvp/list?name=   可应战挑战列表
  * - POST /api/boardgame/pvp/create     {name,spell,opponent_name,versus_ai}  发起挑战
  * - POST /api/boardgame/pvp/accept     {name,spell,match_id}  应战
- * - POST /api/boardgame/pvp/roll       {name,spell,match_id}  PVP 掷骰
+ * - POST /api/boardgame/pvp/roll       {name,spell,match_id,plane_index}  PVP 飞行棋掷骰
  *
  * 写操作以 name+spell 为凭证（与登录/修炼一致，明文比对）。
  */
@@ -105,7 +105,7 @@ public class BoardGameController {
         if (af == null) {
             return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
         }
-        return ResponseEntity.ok(wrap(boardGameService.roll(af)));
+        return ResponseEntity.ok(wrap(boardGameService.roll(af, req.getPlaneIndex())));
     }
 
     /* ================= 道具 ================= */
@@ -166,7 +166,7 @@ public class BoardGameController {
     public ResponseEntity<Map<String, Object>> pvpRoll(@RequestBody BoardGameRequest req) {
         AvatarFoundation af = requireUser(req.getName(), req.getSpell());
         if (af == null) return ResponseEntity.status(401).body(ApiResult.fail("凭证不符，神尊未应"));
-        return ResponseEntity.ok(wrap(boardGameService.pvpRoll(af, req.getMatchId())));
+        return ResponseEntity.ok(wrap(boardGameService.pvpRoll(af, req.getMatchId(), req.getPlaneIndex())));
     }
 
     private static Map<String, Object> wrap(Map<String, Object> result) {

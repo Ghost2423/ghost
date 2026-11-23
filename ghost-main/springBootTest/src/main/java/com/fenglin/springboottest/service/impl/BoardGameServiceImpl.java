@@ -20,10 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 /**
  * 太虚弈局（桌游）服务实现。
@@ -79,6 +81,14 @@ public class BoardGameServiceImpl implements BoardGameService {
         m.put("id", g.getId());
         m.put("status", g.getStatus());
         m.put("position", g.getPosition());
+        // 飞行棋状态：4 架飞机位置 + 劫妖存活 + 当前选中机 + 再掷标记
+        int[] planes = BoardGameRules.parsePlanes(g.getPlaneStates());
+        List<Integer> planeList = new ArrayList<>();
+        for (int p : planes) planeList.add(p);
+        m.put("planes", planeList);
+        m.put("active_plane", g.getActivePlane() == null ? 0 : g.getActivePlane());
+        m.put("extra_roll", g.getExtraRoll() != null && g.getExtraRoll() == 1);
+        m.put("guards", parseGuards(g.getGuards()));
         m.put("rolls", g.getRolls());
         m.put("dice_log", g.getDiceLog());
         m.put("gain_copper", g.getGainCopper());
@@ -88,6 +98,51 @@ public class BoardGameServiceImpl implements BoardGameService {
         m.put("created_at", g.getCreatedAt() == null ? null : g.getCreatedAt().toString());
         m.put("finished_at", g.getFinishedAt() == null ? null : g.getFinishedAt().toString());
         return m;
+    }
+
+    /** 劫妖状态串解析为布尔数组（1=存活） */
+    private boolean[] parseGuards(String s) {
+        boolean[] g = new boolean[BoardGameRules.GUARD_CELLS.length];
+        for (int i = 0; i < g.length; i++) g[i] = true;
+        if (s == null || s.isBlank()) return g;
+        String[] parts = s.split(",");
+        for (int i = 0; i < Math.min(parts.length, g.length); i++) {
+            g[i] = !"0".equals(parts[i].trim());
+        }
+        return g;
+    }
+
+    private String formatGuards(boolean[] g) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < g.length; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(g[i] ? '1' : '0');
+        }
+        return sb.toString();
+    }
+
+    /** 飞行棋一步的结算明细 */
+    private static class FlightMove {
+        int plane, dice, from, to;
+        boolean tookOff;        // 从停机坪起飞
+        boolean jumped;         // 同色飞跃
+        boolean finished;       // 该机登临终点
+        boolean bounce;         // 超出终点反弹
+        boolean guardHit;       // 撞破劫妖
+        String special;         // 特殊说明
+        SettleResult settle;    // 落格收益
+    }
+
+    /** 取可操作的飞机编号（优先当前选中，否则第一架未登顶的） */
+    private int resolvePlane(int[] planes, Integer requested, int fallback) {
+        if (requested != null && requested >= 0 && requested < BoardGameRules.PLANES
+                && planes[requested] != BoardGameRules.FINISH_POS) return requested;
+        if (fallback >= 0 && fallback < BoardGameRules.PLANES
+                && planes[fallback] != BoardGameRules.FINISH_POS) return fallback;
+        for (int i = 0; i < planes.length; i++) {
+            if (planes[i] != BoardGameRules.FINISH_POS) return i;
+        }
+        return 0;
     }
 
     private Map<String, Object> assetView(UserCultivation uc) {
@@ -263,6 +318,8 @@ public class BoardGameServiceImpl implements BoardGameService {
         m.put("daily_used", used);
         m.put("daily_left", Math.max(0, BoardGameRules.DAILY_LIMIT - used));
         m.put("max_rolls", BoardGameRules.MAX_ROLLS);
+        // 飞行棋规则展示
+        m.put("flight", flightRuleView());
         m.put("asset", assetView(uc));
         m.put("current", gameView(playingGame(af.getId())));
         m.put("history", recent);
@@ -275,6 +332,20 @@ public class BoardGameServiceImpl implements BoardGameService {
         // PVP 概要
         m.put("pvp", pvpSummary(af));
         return m;
+    }
+
+    /** 飞行棋规则视图（前端展示用） */
+    private Map<String, Object> flightRuleView() {
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("planes", BoardGameRules.PLANES);
+        r.put("hangar", BoardGameRules.HANGAR);
+        r.put("finish_pos", BoardGameRules.FINISH_POS);
+        r.put("takeoff_roll", BoardGameRules.TAKEOFF_ROLL);
+        r.put("jump_steps", BoardGameRules.SAME_COLOR_JUMP);
+        r.put("guard_bonus", BoardGameRules.GUARD_BOUNTY_COPPER);
+        r.put("guard_cells", Arrays.stream(BoardGameRules.GUARD_CELLS).boxed().collect(Collectors.toList()));
+        r.put("plane_meta", BoardGameRules.planeMetaView());
+        return r;
     }
 
     private java.util.List<Map<String, Object>> buildAchievements(int played, int won) {
@@ -318,7 +389,13 @@ public class BoardGameServiceImpl implements BoardGameService {
         cultivationMapper.updateById(uc);
 
         BoardGameLog g = new BoardGameLog();
-        g.setUserId(af.getId()); g.setStatus("playing"); g.setPosition(0); g.setRolls(0);
+        g.setUserId(af.getId()); g.setStatus("playing"); g.setPosition(BoardGameRules.HANGAR); g.setRolls(0);
+        // 飞行棋：4 架飞机停机坪待命、劫妖守军就位、默认选中青鸾
+        g.setPlaneStates(BoardGameRules.formatPlanes(new int[]{
+                BoardGameRules.HANGAR, BoardGameRules.HANGAR,
+                BoardGameRules.HANGAR, BoardGameRules.HANGAR}));
+        g.setGuards(BoardGameRules.initialGuards());
+        g.setActivePlane(0); g.setExtraRoll(0);
         g.setDiceLog(""); g.setGainCopper(0); g.setGainPower(0); g.setPass(0); g.setWard(0);
         g.setCreatedAt(LocalDateTime.now());
         gameMapper.insert(g);
@@ -333,55 +410,146 @@ public class BoardGameServiceImpl implements BoardGameService {
 
     @Override
     @Transactional
-    public Map<String, Object> roll(AvatarFoundation af) {
+    public Map<String, Object> roll(AvatarFoundation af, Integer planeIndex) {
         BoardGameLog g = playingGame(af.getId());
         if (g == null) throw new BoardGameException("当前无进行中的弈局，请先入局");
         if (g.getRolls() >= BoardGameRules.MAX_ROLLS) throw new BoardGameException("本局掷骰次数已用尽");
 
+        int[] planes = BoardGameRules.parsePlanes(g.getPlaneStates());
+        boolean[] guards = parseGuards(g.getGuards());
+        int plane = resolvePlane(planes, planeIndex, g.getActivePlane() == null ? 0 : g.getActivePlane());
+        if (planes[plane] == BoardGameRules.FINISH_POS) {
+            throw new BoardGameException("第 " + (plane + 1) + " 架飞机已登临神位，请另选一架");
+        }
+
         UserCultivation uc = getOrInit(af.getId());
         boolean ward = g.getWard() != null && g.getWard() == 1;
-
         int dice = ThreadLocalRandom.current().nextInt(1, 7);
-        int from = g.getPosition() == null ? 0 : g.getPosition();
-        int to = Math.min(from + dice, BoardGameRules.BOARD_SIZE - 1);
-        BoardGameRules.Cell cell = BoardGameRules.cellAt(to);
-
-        SettleResult sr = settle(cell, uc, ward);
-        if (sr.wardUsed) g.setWard(0);
+        FlightMove fm = flightMove(planes, guards, plane, dice, uc, ward);
+        if (fm.settle != null && fm.settle.wardUsed) g.setWard(0);
         cultivationMapper.updateById(uc);
 
-        String diceLog = (g.getDiceLog() == null ? "" : g.getDiceLog()) + dice + ",";
-        g.setPosition(to);
+        int extraCopper = 0;
+        StringBuilder special = new StringBuilder();
+        if (fm.tookOff) special.append("掷出六点，").append(planeName(plane)).append("起飞");
+        if (fm.bounce) special.append(special.length() > 0 ? "；" : "").append("越过神位，原路反弹");
+        if (fm.jumped) special.append(special.length() > 0 ? "；" : "").append("同色格飞跃四步");
+        if (fm.guardHit) {
+            extraCopper = BoardGameRules.GUARD_BOUNTY_COPPER;
+            uc.setCopper((uc.getCopper() == null ? 0 : uc.getCopper()) + extraCopper);
+            cultivationMapper.updateById(uc);
+            special.append(special.length() > 0 ? "；" : "").append("撞破劫妖，赏赐 ◉").append(extraCopper);
+        }
+        if (fm.finished) special.append(special.length() > 0 ? "；" : "").append(planeName(plane)).append("登临神位");
+
+        String diceLog = (g.getDiceLog() == null ? "" : g.getDiceLog())
+                + plane + ":" + dice + "→" + fm.to + ",";
+        g.setPlaneStates(BoardGameRules.formatPlanes(planes));
+        g.setGuards(formatGuards(guards));
+        g.setActivePlane(plane);
+        g.setPosition(maxPlane(planes));
+        g.setExtraRoll(dice == BoardGameRules.TAKEOFF_ROLL ? 1 : 0);
         g.setRolls((g.getRolls() == null ? 0 : g.getRolls()) + 1);
         g.setDiceLog(diceLog);
-        g.setGainCopper((g.getGainCopper() == null ? 0 : g.getGainCopper()) + sr.copper);
-        g.setGainPower((g.getGainPower() == null ? 0 : g.getGainPower()) + sr.power);
+        g.setGainCopper((g.getGainCopper() == null ? 0 : g.getGainCopper())
+                + (fm.settle == null ? 0 : fm.settle.copper) + extraCopper);
+        g.setGainPower((g.getGainPower() == null ? 0 : g.getGainPower())
+                + (fm.settle == null ? 0 : fm.settle.power));
 
-        boolean reachedFinish = to >= BoardGameRules.BOARD_SIZE - 1;
+        boolean allDone = BoardGameRules.allFinished(planes);
         boolean outOfRolls = g.getRolls() >= BoardGameRules.MAX_ROLLS;
-        boolean finished = reachedFinish || outOfRolls;
+        boolean finished = allDone || outOfRolls;
         if (finished) {
             g.setStatus("finished");
-            g.setPass(reachedFinish ? 1 : 0);
+            g.setPass(allDone ? 1 : 0);
             g.setFinishedAt(LocalDateTime.now());
         }
         gameMapper.updateById(g);
 
+        BoardGameRules.Cell cell = fm.to >= 0 ? BoardGameRules.cellAt(fm.to) : null;
         Map<String, Object> r = new LinkedHashMap<>();
-        r.put("dice", dice); r.put("from", from); r.put("to", to);
-        r.put("cell_name", cell.name); r.put("cell_icon", cell.icon);
-        r.put("cell_type", cell.type); r.put("cell_desc", cell.desc);
-        r.put("gain_copper", sr.copper); r.put("gain_power", sr.power);
-        r.put("ward_used", sr.wardUsed);
-        r.put("item_gained", sr.itemGained);
-        r.put("item_name", sr.itemName);
-        r.put("item_icon", sr.itemIcon);
+        r.put("dice", dice); r.put("from", fm.from); r.put("to", fm.to);
+        r.put("plane", plane); r.put("plane_name", planeName(plane));
+        r.put("took_off", fm.tookOff); r.put("jumped", fm.jumped);
+        r.put("bounce", fm.bounce); r.put("guard_hit", fm.guardHit);
+        r.put("guard_copper", extraCopper);
+        r.put("cell_name", cell == null ? "停机坪" : cell.name);
+        r.put("cell_icon", cell == null ? "◇" : cell.icon);
+        r.put("cell_type", cell == null ? "HANGAR" : cell.type);
+        r.put("cell_desc", cell == null ? "尚未起飞" : cell.desc);
+        r.put("gain_copper", (fm.settle == null ? 0 : fm.settle.copper) + extraCopper);
+        r.put("gain_power", fm.settle == null ? 0 : fm.settle.power);
+        r.put("ward_used", fm.settle != null && fm.settle.wardUsed);
+        r.put("item_gained", fm.settle == null ? null : fm.settle.itemGained);
+        r.put("item_name", fm.settle == null ? null : fm.settle.itemName);
+        r.put("item_icon", fm.settle == null ? null : fm.settle.itemIcon);
+        r.put("special", special.toString());
+        r.put("extra_roll", dice == BoardGameRules.TAKEOFF_ROLL);
+        r.put("planes", java.util.Arrays.stream(planes).boxed().collect(Collectors.toList()));
         r.put("pass", g.getPass()); r.put("finished", finished);
         r.put("left_rolls", Math.max(0, BoardGameRules.MAX_ROLLS - g.getRolls()));
         r.put("game", gameView(g));
         r.put("asset", assetView(uc));
         r.put("items", itemBag(af.getId()));
         return r;
+    }
+
+    /** 执行飞行棋一步：起飞 / 行棋 / 同色飞跃 / 撞妖 / 落格结算 */
+    private FlightMove flightMove(int[] planes, boolean[] guards, int plane, int dice,
+                                  UserCultivation uc, boolean ward) {
+        FlightMove fm = new FlightMove();
+        fm.plane = plane; fm.dice = dice;
+        int from = planes[plane];
+        fm.from = from;
+
+        // 停机坪：只有掷出 6 点可起飞到起点 0
+        if (from == BoardGameRules.HANGAR) {
+            if (dice != BoardGameRules.TAKEOFF_ROLL) {
+                fm.to = BoardGameRules.HANGAR;
+                fm.special = "未掷出六点，留在停机坪";
+                return fm;
+            }
+            fm.to = 0;
+            fm.tookOff = true;
+            planes[plane] = fm.to;
+            return fm; // 起点不结算收益
+        }
+
+        // 行棋：超过终点则反弹
+        int to = BoardGameRules.movedTo(from, dice);
+        fm.bounce = from + dice > BoardGameRules.FINISH_POS;
+        // 同色格飞跃（终点不再飞跃）
+        if (to < BoardGameRules.FINISH_POS) {
+            int jumped = BoardGameRules.jumpTarget(to, plane);
+            if (jumped != to) { fm.jumped = true; to = jumped; }
+        }
+        fm.to = to;
+        planes[plane] = to;
+
+        // 撞破劫妖（单人局守军）
+        for (int i = 0; i < BoardGameRules.GUARD_CELLS.length; i++) {
+            if (to >= 0 && to == BoardGameRules.GUARD_CELLS[i] && guards[i]) {
+                guards[i] = false;
+                fm.guardHit = true;
+                break;
+            }
+        }
+
+        // 落格结算（终点格也结算通关大奖）
+        fm.settle = settle(BoardGameRules.cellAt(to), uc, ward);
+        fm.finished = to == BoardGameRules.FINISH_POS;
+        return fm;
+    }
+
+    private String planeName(int plane) {
+        String[] names = {"青鸾", "金乌", "赤凰", "白鹤"};
+        return plane >= 0 && plane < names.length ? names[plane] : ("第" + (plane + 1) + "机");
+    }
+
+    private int maxPlane(int[] planes) {
+        int max = BoardGameRules.HANGAR;
+        for (int p : planes) if (p > max) max = p;
+        return max;
     }
 
     @Override
@@ -450,27 +618,45 @@ public class BoardGameServiceImpl implements BoardGameService {
             return okItem("镇厄符护体，本局免疫下一次劫难", uc, af);
         }
         if (BoardGameRules.ITEM_LEAP.equals(itemKey)) {
+            int[] planes = BoardGameRules.parsePlanes(g.getPlaneStates());
+            int plane = resolvePlane(planes, null, g.getActivePlane() == null ? 0 : g.getActivePlane());
+            if (planes[plane] == BoardGameRules.HANGAR) {
+                throw new BoardGameException("该飞机尚在停机坪，请先掷出六点起飞");
+            }
+            if (planes[plane] == BoardGameRules.FINISH_POS) {
+                throw new BoardGameException("该飞机已登临神位，请另选一架");
+            }
             consumeItem(af.getId(), itemKey);
-            int from = g.getPosition() == null ? 0 : g.getPosition();
-            int to = Math.min(from + BoardGameRules.ITEM_LEAP_STEPS, BoardGameRules.BOARD_SIZE - 1);
+            int from = planes[plane];
+            int to = BoardGameRules.movedTo(from, BoardGameRules.ITEM_LEAP_STEPS);
+            boolean jumped = false;
+            if (to < BoardGameRules.FINISH_POS) {
+                int j = BoardGameRules.jumpTarget(to, plane);
+                if (j != to) { to = j; jumped = true; }
+            }
             BoardGameRules.Cell cell = BoardGameRules.cellAt(to);
             boolean ward = g.getWard() != null && g.getWard() == 1;
             SettleResult sr = settle(cell, uc, ward);
             if (sr.wardUsed) g.setWard(0);
             cultivationMapper.updateById(uc);
-            g.setPosition(to);
+            planes[plane] = to;
+            g.setPlaneStates(BoardGameRules.formatPlanes(planes));
+            g.setActivePlane(plane);
+            g.setPosition(maxPlane(planes));
             g.setGainCopper((g.getGainCopper() == null ? 0 : g.getGainCopper()) + sr.copper);
             g.setGainPower((g.getGainPower() == null ? 0 : g.getGainPower()) + sr.power);
-            boolean reachedFinish = to >= BoardGameRules.BOARD_SIZE - 1;
-            if (reachedFinish) {
-                g.setStatus("finished"); g.setPass(1); g.setFinishedAt(LocalDateTime.now());
+            boolean reachedFinish = to == BoardGameRules.FINISH_POS;
+            boolean allDone = BoardGameRules.allFinished(planes);
+            if (allDone || reachedFinish && g.getRolls() >= BoardGameRules.MAX_ROLLS) {
+                g.setStatus("finished"); g.setPass(allDone ? 1 : 0); g.setFinishedAt(LocalDateTime.now());
             }
             gameMapper.updateById(g);
-            Map<String, Object> r = okItem("缩地符：前进 " + BoardGameRules.ITEM_LEAP_STEPS + " 格，落「" + cell.name + "」", uc, af);
+            Map<String, Object> r = okItem("缩地符：" + planeName(plane) + "前进 "
+                    + BoardGameRules.ITEM_LEAP_STEPS + " 格" + (jumped ? "并同色飞跃" : "") + "，落「" + cell.name + "」", uc, af);
             r.put("to", to); r.put("cell_name", cell.name);
             r.put("gain_copper", sr.copper); r.put("gain_power", sr.power);
             r.put("item_gained", sr.itemGained); r.put("item_name", sr.itemName);
-            r.put("pass", reachedFinish ? 1 : 0);
+            r.put("pass", allDone ? 1 : 0);
             r.put("game", gameView(g));
             return r;
         }
@@ -520,6 +706,14 @@ public class BoardGameServiceImpl implements BoardGameService {
         r.put("status", m.getStatus());
         r.put("challenger_pos", m.getChallengerPos());
         r.put("defender_pos", m.getDefenderPos());
+        // 飞行棋：双方飞机位置 / 当前选中机 / 再掷标记
+        r.put("challenger_planes", Arrays.stream(BoardGameRules.parsePlanes(m.getChallengerPlanes()))
+                .boxed().collect(Collectors.toList()));
+        r.put("defender_planes", Arrays.stream(BoardGameRules.parsePlanes(m.getDefenderPlanes()))
+                .boxed().collect(Collectors.toList()));
+        r.put("challenger_active", m.getChallengerActive() == null ? 0 : m.getChallengerActive());
+        r.put("defender_active", m.getDefenderActive() == null ? 0 : m.getDefenderActive());
+        r.put("extra_roll", m.getExtraRoll() != null && m.getExtraRoll() == 1);
         r.put("challenger_rolls", m.getChallengerRolls());
         r.put("defender_rolls", m.getDefenderRolls());
         r.put("turn", m.getTurn());
@@ -556,6 +750,7 @@ public class BoardGameServiceImpl implements BoardGameService {
         r.put("max_rolls", BoardGameRules.PVP_MAX_ROLLS);
         r.put("win_copper", BoardGameRules.PVP_WIN_COPPER);
         r.put("win_power", BoardGameRules.PVP_WIN_POWER);
+        r.put("flight", flightRuleView());
         r.put("asset", assetView(getOrInit(af.getId())));
         r.put("items", itemBag(af.getId()));
         return r;
@@ -612,7 +807,12 @@ public class BoardGameServiceImpl implements BoardGameService {
 
         BoardPvpMatch m = new BoardPvpMatch();
         m.setChallengerId(uid); m.setDefenderId(defenderId); m.setDefenderAi(defenderAi);
-        m.setStatus(status); m.setChallengerPos(0); m.setDefenderPos(0);
+        m.setStatus(status); m.setChallengerPos(BoardGameRules.HANGAR); m.setDefenderPos(BoardGameRules.HANGAR);
+        String initialPlanes = BoardGameRules.formatPlanes(new int[]{
+                BoardGameRules.HANGAR, BoardGameRules.HANGAR,
+                BoardGameRules.HANGAR, BoardGameRules.HANGAR});
+        m.setChallengerPlanes(initialPlanes); m.setDefenderPlanes(initialPlanes);
+        m.setChallengerActive(0); m.setDefenderActive(0); m.setExtraRoll(0);
         m.setChallengerRolls(0); m.setDefenderRolls(0); m.setTurn(turn);
         m.setPot(BoardGameRules.PVP_ENTRY_FEE);
         m.setChallengerGainCopper(0); m.setChallengerGainPower(0);
@@ -658,7 +858,7 @@ public class BoardGameServiceImpl implements BoardGameService {
 
     @Override
     @Transactional
-    public Map<String, Object> pvpRoll(AvatarFoundation af, Long matchId) {
+    public Map<String, Object> pvpRoll(AvatarFoundation af, Long matchId, Integer planeIndex) {
         if (matchId == null) throw new BoardGameException("未指定对局");
         int uid = af.getId().intValue();
         BoardPvpMatch m = pvpMapper.selectById(matchId);
@@ -671,18 +871,25 @@ public class BoardGameServiceImpl implements BoardGameService {
             throw new BoardGameException("尚未轮到你行棋");
 
         StringBuilder trace = new StringBuilder();
-        // 玩家掷一步
-        String step = pvpStep(m, isChallenger ? "challenger" : "defender");
-        trace.append(step);
+        // 玩家掷一步；掷 6 可再掷（不换手）
+        Integer requested = planeIndex;
+        boolean again;
+        do {
+            String side = isChallenger ? "challenger" : "defender";
+            String step = pvpStep(m, side, requested);
+            trace.append(step);
+            again = m.getExtraRoll() != null && m.getExtraRoll() == 1
+                    && "playing".equals(m.getStatus()) && m.getTurn().equals(side);
+            requested = null; // 再掷由系统自动选机
+        } while (again);
 
-        // 若对局仍进行，且接下来轮到天道AI，则服务端自动代掷直到回到玩家或结束
+        // 天道AI 自动代掷：掷 6 也连续掷，直到换回玩家或结束
         int guard = 0;
         while ("playing".equals(m.getStatus())
                 && "defender".equals(m.getTurn())
                 && m.getDefenderAi() != null && m.getDefenderAi() == 1
-                && guard++ < BoardGameRules.PVP_MAX_ROLLS + 2) {
-            String aiStep = pvpStep(m, "defender");
-            trace.append(" | ").append(aiStep);
+                && guard++ < BoardGameRules.PVP_MAX_ROLLS + 4) {
+            trace.append(" | ").append(pvpStep(m, "defender", null));
         }
         pvpMapper.updateById(m);
 
@@ -704,61 +911,116 @@ public class BoardGameServiceImpl implements BoardGameService {
         return r;
     }
 
-    /** PVP 单方走一步（掷骰 + 落格结算 + 终点判定），直接改 match 对象 */
-    private String pvpStep(BoardPvpMatch m, String side) {
+    /** PVP 单方飞行棋一步：起飞 / 行棋 / 同色飞跃 / 撞子 / 落格结算 / 胜利判定 */
+    private String pvpStep(BoardPvpMatch m, String side, Integer requestedPlane) {
         boolean challenger = "challenger".equals(side);
-        int from = challenger ? (m.getChallengerPos() == null ? 0 : m.getChallengerPos())
-                              : (m.getDefenderPos() == null ? 0 : m.getDefenderPos());
-        int dice = ThreadLocalRandom.current().nextInt(1, 7);
-        int to = Math.min(from + dice, BoardGameRules.BOARD_SIZE - 1);
-        BoardGameRules.Cell cell = BoardGameRules.cellAt(to);
+        int[] myPlanes = BoardGameRules.parsePlanes(challenger ? m.getChallengerPlanes() : m.getDefenderPlanes());
+        int[] foePlanes = BoardGameRules.parsePlanes(challenger ? m.getDefenderPlanes() : m.getChallengerPlanes());
+        int fallback = challenger
+                ? (m.getChallengerActive() == null ? 0 : m.getChallengerActive())
+                : (m.getDefenderActive() == null ? 0 : m.getDefenderActive());
+        int plane = resolvePlane(myPlanes, requestedPlane, fallback);
+        if (myPlanes[plane] == BoardGameRules.FINISH_POS) {
+            // 当前选中机已登顶，换一架
+            plane = resolvePlane(myPlanes, null, -1);
+        }
 
-        String detail;
-        if (challenger) {
-            UserCultivation uc = getOrInit(m.getChallengerId().longValue());
-            boolean ward = m.getChallengerWard() != null && m.getChallengerWard() == 1;
-            SettleResult sr = settle(cell, uc, ward);
-            if (sr.wardUsed) m.setChallengerWard(0);
-            cultivationMapper.updateById(uc);
-            m.setChallengerPos(to);
-            m.setChallengerRolls((m.getChallengerRolls() == null ? 0 : m.getChallengerRolls()) + 1);
-            m.setChallengerGainCopper((m.getChallengerGainCopper() == null ? 0 : m.getChallengerGainCopper()) + sr.copper);
-            m.setChallengerGainPower((m.getChallengerGainPower() == null ? 0 : m.getChallengerGainPower()) + sr.power);
-            detail = "挑战者掷" + dice + "→格" + to + "「" + cell.name + "」";
-        } else {
-            // AI 对手：收益只记入对局展示，不发放到真实账户（AI 无根基）
-            boolean defenderReal = m.getDefenderId() != null;
-            if (defenderReal) {
-                UserCultivation uc = getOrInit(m.getDefenderId().longValue());
-                boolean ward = m.getDefenderWard() != null && m.getDefenderWard() == 1;
-                SettleResult sr = settle(cell, uc, ward);
-                if (sr.wardUsed) m.setDefenderWard(0);
-                cultivationMapper.updateById(uc);
-                m.setDefenderGainCopper((m.getDefenderGainCopper() == null ? 0 : m.getDefenderGainCopper()) + sr.copper);
-                m.setDefenderGainPower((m.getDefenderGainPower() == null ? 0 : m.getDefenderGainPower()) + sr.power);
+        int dice = ThreadLocalRandom.current().nextInt(1, 7);
+        int from = myPlanes[plane];
+        int to;
+        boolean tookOff = false, jumped = false, bounce = false;
+        if (from == BoardGameRules.HANGAR) {
+            if (dice == BoardGameRules.TAKEOFF_ROLL) {
+                to = 0; tookOff = true; myPlanes[plane] = to;
             } else {
-                // AI：虚拟结算，仅展示，不入库
-                int gainC = BoardGameRules.T_COPPER.equals(cell.type) || BoardGameRules.T_BOON.equals(cell.type)
-                        || BoardGameRules.T_FINISH.equals(cell.type) ? cell.copper : 0;
-                int gainP = BoardGameRules.T_POWER.equals(cell.type) || BoardGameRules.T_BOON.equals(cell.type)
-                        || BoardGameRules.T_FINISH.equals(cell.type) ? cell.power : 0;
-                m.setDefenderGainCopper((m.getDefenderGainCopper() == null ? 0 : m.getDefenderGainCopper()) + gainC);
-                m.setDefenderGainPower((m.getDefenderGainPower() == null ? 0 : m.getDefenderGainPower()) + gainP);
+                to = BoardGameRules.HANGAR;
             }
-            m.setDefenderPos(to);
+        } else {
+            to = BoardGameRules.movedTo(from, dice);
+            bounce = from + dice > BoardGameRules.FINISH_POS;
+            if (to < BoardGameRules.FINISH_POS) {
+                int j = BoardGameRules.jumpTarget(to, plane);
+                if (j != to) { to = j; jumped = true; }
+            }
+            myPlanes[plane] = to;
+        }
+
+        // 撞子：落点与敌机重合，敌机回停机坪
+        int bumped = -1;
+        if (to >= 0 && to < BoardGameRules.FINISH_POS) {
+            for (int i = 0; i < foePlanes.length; i++) {
+                if (foePlanes[i] == to) { foePlanes[i] = BoardGameRules.HANGAR; bumped = i; }
+            }
+            // 同色己机可叠机，不互撞
+        }
+
+        StringBuilder detail = new StringBuilder();
+        detail.append(challenger ? "挑战者" : "对手").append("掷").append(dice)
+                .append("·").append(planeName(plane));
+        if (tookOff) detail.append("起飞");
+        else if (to == BoardGameRules.HANGAR) detail.append("留坪");
+        else detail.append("→格").append(to);
+        if (jumped) detail.append("✈飞跃");
+        if (bounce) detail.append("↩反弹");
+        if (bumped >= 0) detail.append("⚔撞落敌机").append(bumped + 1);
+        if (to == BoardGameRules.FINISH_POS) detail.append("登神位");
+
+        // 落格结算（仅真实玩家入库；AI 虚拟计展示）
+        SettleResult sr = null;
+        if (to >= 0) {
+            BoardGameRules.Cell cell = BoardGameRules.cellAt(to);
+            detail.append("「").append(cell.name).append("」");
+            if (!tookOff) {
+                if (challenger) {
+                    UserCultivation uc = getOrInit(m.getChallengerId().longValue());
+                    boolean ward = m.getChallengerWard() != null && m.getChallengerWard() == 1;
+                    sr = settle(cell, uc, ward);
+                    if (sr.wardUsed) m.setChallengerWard(0);
+                    cultivationMapper.updateById(uc);
+                    m.setChallengerGainCopper((m.getChallengerGainCopper() == null ? 0 : m.getChallengerGainCopper()) + sr.copper);
+                    m.setChallengerGainPower((m.getChallengerGainPower() == null ? 0 : m.getChallengerGainPower()) + sr.power);
+                } else if (m.getDefenderId() != null) {
+                    UserCultivation uc = getOrInit(m.getDefenderId().longValue());
+                    boolean ward = m.getDefenderWard() != null && m.getDefenderWard() == 1;
+                    sr = settle(cell, uc, ward);
+                    if (sr.wardUsed) m.setDefenderWard(0);
+                    cultivationMapper.updateById(uc);
+                    m.setDefenderGainCopper((m.getDefenderGainCopper() == null ? 0 : m.getDefenderGainCopper()) + sr.copper);
+                    m.setDefenderGainPower((m.getDefenderGainPower() == null ? 0 : m.getDefenderGainPower()) + sr.power);
+                } else {
+                    int gainC = BoardGameRules.T_COPPER.equals(cell.type) || BoardGameRules.T_BOON.equals(cell.type)
+                            || BoardGameRules.T_FINISH.equals(cell.type) ? cell.copper : 0;
+                    int gainP = BoardGameRules.T_POWER.equals(cell.type) || BoardGameRules.T_BOON.equals(cell.type)
+                            || BoardGameRules.T_FINISH.equals(cell.type) ? cell.power : 0;
+                    m.setDefenderGainCopper((m.getDefenderGainCopper() == null ? 0 : m.getDefenderGainCopper()) + gainC);
+                    m.setDefenderGainPower((m.getDefenderGainPower() == null ? 0 : m.getDefenderGainPower()) + gainP);
+                }
+            }
+        }
+
+        if (challenger) {
+            m.setChallengerPlanes(BoardGameRules.formatPlanes(myPlanes));
+            m.setChallengerPos(maxPlane(myPlanes));
+            m.setChallengerActive(plane);
+            m.setChallengerRolls((m.getChallengerRolls() == null ? 0 : m.getChallengerRolls()) + 1);
+            m.setDefenderPlanes(BoardGameRules.formatPlanes(foePlanes));
+        } else {
+            m.setDefenderPlanes(BoardGameRules.formatPlanes(myPlanes));
+            m.setDefenderPos(maxPlane(myPlanes));
+            m.setDefenderActive(plane);
             m.setDefenderRolls((m.getDefenderRolls() == null ? 0 : m.getDefenderRolls()) + 1);
-            detail = "对手掷" + dice + "→格" + to + "「" + cell.name + "」";
+            m.setChallengerPlanes(BoardGameRules.formatPlanes(foePlanes));
         }
 
         String log = (m.getDiceLog() == null ? "" : m.getDiceLog()) + detail + ";";
         m.setDiceLog(log.length() > 900 ? log.substring(log.length() - 900) : log);
 
-        boolean reachedFinish = to >= BoardGameRules.BOARD_SIZE - 1;
-        if (reachedFinish) {
+        boolean allDone = BoardGameRules.allFinished(myPlanes);
+        boolean outOfRolls = (challenger ? m.getChallengerRolls() : m.getDefenderRolls()) >= BoardGameRules.PVP_MAX_ROLLS;
+        if (allDone || outOfRolls) {
             m.setStatus("finished");
             m.setWinner(side);
             m.setFinishedAt(LocalDateTime.now());
-            // 发放奖池 + 胜利奖励给胜者（AI 获胜则奖池沉没）
             Long winnerId = null;
             if (challenger) winnerId = m.getChallengerId().longValue();
             else if (m.getDefenderId() != null) winnerId = m.getDefenderId().longValue();
@@ -769,11 +1031,16 @@ public class BoardGameServiceImpl implements BoardGameService {
                 wu.setPower((wu.getPower() == null ? 0 : wu.getPower()) + BoardGameRules.PVP_WIN_POWER);
                 cultivationMapper.updateById(wu);
             }
-            detail += " ★" + (challenger ? "挑战者" : "对手") + "登神位获胜";
+            detail.append(" ★").append(challenger ? "挑战者" : "对手").append("四机登顶获胜");
+        } else if (dice == BoardGameRules.TAKEOFF_ROLL) {
+            // 掷 6 再掷：不换手
+            m.setExtraRoll(1);
+            m.setTurn(side);
         } else {
+            m.setExtraRoll(0);
             m.setTurn(challenger ? "defender" : "challenger");
         }
-        return detail;
+        return detail.toString();
     }
 
     /** 在 PVP 局中使用镇厄符 / 缩地符 */
@@ -794,9 +1061,21 @@ public class BoardGameServiceImpl implements BoardGameService {
             return okItem("镇厄符护体，本场免疫下一次劫难", uc, af);
         }
         if (BoardGameRules.ITEM_LEAP.equals(itemKey)) {
+            int[] planes = BoardGameRules.parsePlanes(challenger ? m.getChallengerPlanes() : m.getDefenderPlanes());
+            int fallback = challenger
+                    ? (m.getChallengerActive() == null ? 0 : m.getChallengerActive())
+                    : (m.getDefenderActive() == null ? 0 : m.getDefenderActive());
+            int plane = resolvePlane(planes, null, fallback);
+            if (planes[plane] == BoardGameRules.HANGAR) {
+                throw new BoardGameException("该飞机尚在停机坪，请先掷出六点起飞");
+            }
             consumeItem(af.getId(), itemKey);
-            Integer from = challenger ? m.getChallengerPos() : m.getDefenderPos();
-            int to = Math.min((from == null ? 0 : from) + BoardGameRules.ITEM_LEAP_STEPS, BoardGameRules.BOARD_SIZE - 1);
+            int from = planes[plane];
+            int to = BoardGameRules.movedTo(from, BoardGameRules.ITEM_LEAP_STEPS);
+            if (to < BoardGameRules.FINISH_POS) {
+                int j = BoardGameRules.jumpTarget(to, plane);
+                if (j != to) to = j;
+            }
             BoardGameRules.Cell cell = BoardGameRules.cellAt(to);
             boolean ward = challenger ? (m.getChallengerWard() != null && m.getChallengerWard() == 1)
                                        : (m.getDefenderWard() != null && m.getDefenderWard() == 1);
@@ -804,14 +1083,19 @@ public class BoardGameServiceImpl implements BoardGameService {
                 SettleResult sr = settle(cell, uc, ward);
                 if (sr.wardUsed) m.setChallengerWard(0);
                 cultivationMapper.updateById(uc);
-                m.setChallengerPos(to);
                 m.setChallengerGainCopper((m.getChallengerGainCopper() == null ? 0 : m.getChallengerGainCopper()) + sr.copper);
                 m.setChallengerGainPower((m.getChallengerGainPower() == null ? 0 : m.getChallengerGainPower()) + sr.power);
-            } else {
-                m.setDefenderPos(to);
             }
-            boolean reach = to >= BoardGameRules.BOARD_SIZE - 1;
-            if (reach) { m.setStatus("finished"); m.setWinner(challenger ? "challenger" : "defender"); m.setFinishedAt(LocalDateTime.now()); }
+            planes[plane] = to;
+            if (challenger) {
+                m.setChallengerPlanes(BoardGameRules.formatPlanes(planes));
+                m.setChallengerPos(maxPlane(planes)); m.setChallengerActive(plane);
+            } else {
+                m.setDefenderPlanes(BoardGameRules.formatPlanes(planes));
+                m.setDefenderPos(maxPlane(planes)); m.setDefenderActive(plane);
+            }
+            boolean allDone = BoardGameRules.allFinished(planes);
+            if (allDone) { m.setStatus("finished"); m.setWinner(challenger ? "challenger" : "defender"); m.setFinishedAt(LocalDateTime.now()); }
             else m.setTurn(challenger ? "defender" : "challenger");
             pvpMapper.updateById(m);
 
@@ -819,10 +1103,10 @@ public class BoardGameServiceImpl implements BoardGameService {
             int guard = 0;
             while ("playing".equals(m.getStatus()) && "defender".equals(m.getTurn())
                     && m.getDefenderAi() != null && m.getDefenderAi() == 1
-                    && guard++ < BoardGameRules.PVP_MAX_ROLLS + 2) pvpStep(m, "defender");
+                    && guard++ < BoardGameRules.PVP_MAX_ROLLS + 4) pvpStep(m, "defender", null);
             pvpMapper.updateById(m);
 
-            Map<String, Object> r = okItem("缩地符：前进 " + BoardGameRules.ITEM_LEAP_STEPS + " 格，落「" + cell.name + "」", uc, af);
+            Map<String, Object> r = okItem("缩地符：" + planeName(plane) + "前进，落「" + cell.name + "」", uc, af);
             r.put("match", pvpView(m));
             r.put("asset", assetView(getOrInit(af.getId())));
             return r;

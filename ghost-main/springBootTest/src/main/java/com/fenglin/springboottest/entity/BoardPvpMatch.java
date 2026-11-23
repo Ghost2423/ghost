@@ -19,6 +19,14 @@ public class BoardPvpMatch {
     private String status;
     private Integer challengerPos;
     private Integer defenderPos;
+    /** 飞行棋：双方 4 架飞机位置串 */
+    private String challengerPlanes;
+    private String defenderPlanes;
+    /** 飞行棋：双方当前选中飞机编号 */
+    private Integer challengerActive;
+    private Integer defenderActive;
+    /** 飞行棋：掷 6 再掷标记 */
+    private Integer extraRoll;
     private Integer challengerRolls;
     private Integer defenderRolls;
     private String turn;
@@ -49,6 +57,16 @@ public class BoardPvpMatch {
     public void setChallengerPos(Integer challengerPos) { this.challengerPos = challengerPos; }
     public Integer getDefenderPos() { return defenderPos; }
     public void setDefenderPos(Integer defenderPos) { this.defenderPos = defenderPos; }
+    public String getChallengerPlanes() { return challengerPlanes; }
+    public void setChallengerPlanes(String challengerPlanes) { this.challengerPlanes = challengerPlanes; }
+    public String getDefenderPlanes() { return defenderPlanes; }
+    public void setDefenderPlanes(String defenderPlanes) { this.defenderPlanes = defenderPlanes; }
+    public Integer getChallengerActive() { return challengerActive; }
+    public void setChallengerActive(Integer challengerActive) { this.challengerActive = challengerActive; }
+    public Integer getDefenderActive() { return defenderActive; }
+    public void setDefenderActive(Integer defenderActive) { this.defenderActive = defenderActive; }
+    public Integer getExtraRoll() { return extraRoll; }
+    public void setExtraRoll(Integer extraRoll) { this.extraRoll = extraRoll; }
     public Integer getChallengerRolls() { return challengerRolls; }
     public void setChallengerRolls(Integer challengerRolls) { this.challengerRolls = challengerRolls; }
     public Integer getDefenderRolls() { return defenderRolls; }
