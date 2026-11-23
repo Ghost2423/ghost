@@ -494,7 +494,8 @@ async function doRoll() {
     const p = d.gain_power ? `${d.gain_power > 0 ? '+' : ''}${d.gain_power} 神尊力` : ''
     const item = d.item_name ? ` 得【${d.item_name}】` : ''
     const sp = d.special ? ` · ${d.special}` : ''
-    toast(d.finished ? (d.pass === 1 ? '四机登顶，登临神位！' : '掷骰已尽') : `掷出 ${d.dice} 点，落「${d.cell_name}」${g}${p}${item}${sp}`)
+    const again = d.extra_roll && !d.finished ? ' · 掷出六点，可再掷一次' : ''
+    toast(d.finished ? (d.pass === 1 ? '四机登顶，登临神位！' : '掷骰已尽') : `掷出 ${d.dice} 点，落「${d.cell_name}」${g}${p}${item}${sp}${again}`)
   } else toast(d.msg || '掷骰失败')
 }
 
@@ -540,7 +541,8 @@ async function doPvpRoll() {
   clearInterval(timer); pvpRolling.value = false; pvpBusy.value = false
   if (d.ok) {
     await loadPvp(true)
-    toast(d.msg)
+    const again = d.match && d.match.extra_roll && !d.finished ? ' 掷出六点，可再掷一次' : ''
+    toast(d.msg + again)
     if (d.finished) {
       winFx.value = {
         title: d.win ? '擂 台 得 胜' : '惜 败 擂 台',

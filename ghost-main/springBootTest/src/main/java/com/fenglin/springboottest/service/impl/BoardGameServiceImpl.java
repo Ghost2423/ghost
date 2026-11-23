@@ -441,6 +441,7 @@ public class BoardGameServiceImpl implements BoardGameService {
             special.append(special.length() > 0 ? "；" : "").append("撞破劫妖，赏赐 ◉").append(extraCopper);
         }
         if (fm.finished) special.append(special.length() > 0 ? "；" : "").append(planeName(plane)).append("登临神位");
+        if (special.length() == 0 && fm.special != null) special.append(fm.special);
 
         String diceLog = (g.getDiceLog() == null ? "" : g.getDiceLog())
                 + plane + ":" + dice + "→" + fm.to + ",";
@@ -871,17 +872,9 @@ public class BoardGameServiceImpl implements BoardGameService {
             throw new BoardGameException("尚未轮到你行棋");
 
         StringBuilder trace = new StringBuilder();
-        // 玩家掷一步；掷 6 可再掷（不换手）
-        Integer requested = planeIndex;
-        boolean again;
-        do {
-            String side = isChallenger ? "challenger" : "defender";
-            String step = pvpStep(m, side, requested);
-            trace.append(step);
-            again = m.getExtraRoll() != null && m.getExtraRoll() == 1
-                    && "playing".equals(m.getStatus()) && m.getTurn().equals(side);
-            requested = null; // 再掷由系统自动选机
-        } while (again);
+        // 玩家掷一步。掷 6 时 pvpStep 保持回合不换手并置 extra_roll，
+        // 由前端提示"可再掷"，玩家可重新选飞机再掷（不在此处自动连掷）。
+        trace.append(pvpStep(m, isChallenger ? "challenger" : "defender", planeIndex));
 
         // 天道AI 自动代掷：掷 6 也连续掷，直到换回玩家或结束
         int guard = 0;
