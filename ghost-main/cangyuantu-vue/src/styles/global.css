@@ -20,12 +20,11 @@ body{
 
 /* ===== 左侧主题视觉 ===== */
 .visual{
-  position:relative;flex:1.15;
+  position:relative;flex:1.15;isolation:isolate;
   background:
     linear-gradient(180deg,rgba(7,11,22,.10),rgba(7,11,22,.72) 70%,rgba(7,11,22,.96)),
     radial-gradient(120% 80% at 72% 18%,rgba(45,212,191,.12),transparent 60%),
     radial-gradient(100% 90% at 18% 92%,rgba(239,68,84,.12),transparent 55%),
-    url("/generated-images/Chinese_ink_wash_fantasy_dongh_2026-09-14T03-41-28.png") center/cover no-repeat,
     linear-gradient(135deg,#0a1124,#0d1426 52%,#070b16);
   display:flex;flex-direction:column;justify-content:space-between;
   padding:54px 56px;overflow:hidden;

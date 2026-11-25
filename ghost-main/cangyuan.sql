@@ -1,4 +1,12 @@
 /*
+ ============================================================
+ ⚠️ 完整数据库快照（仅用于全新安装 / 灾难恢复）
+ 本文件含 18 条 DROP TABLE 与写死的示例数据，导入会清空所有账号、
+ 境界、注册记录、论坛帖子等现有数据，把境界重置为脚本里的历史值！
+ 日常启动 / 重新登录请使用 springBootTest\sql\ 下的幂等脚本，
+ 不要导入本文件，否则玩家修炼境界会被重置。
+ ============================================================
+
  Navicat Premium Dump SQL
 
  Source Server         : test
@@ -61,7 +69,7 @@ CREATE TABLE `board_game_log`  (
   `active_plane` int NOT NULL DEFAULT 0 COMMENT '当前选中飞机编号',
   `extra_roll` tinyint(1) NOT NULL DEFAULT 0 COMMENT '掷6再掷标记',
   `rolls` int NOT NULL DEFAULT 0 COMMENT '已掷骰次数',
-  `dice_log` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '掷骰轨迹，如 3,6,2,5',
+  `dice_log` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '掷骰轨迹，如 0:6→0,1:3→3；用 TEXT 避免长局溢出卡死',
   `gain_copper` int NOT NULL DEFAULT 0 COMMENT '本局累计获得铜币（落格+通关，不含报名费扣减）',
   `gain_power` int NOT NULL DEFAULT 0 COMMENT '本局累计获得神尊力（落格+通关）',
   `pass` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否通关登顶：1=通关 0=未通关',

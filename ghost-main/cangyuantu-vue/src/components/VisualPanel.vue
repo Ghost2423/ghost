@@ -1,5 +1,8 @@
 <template>
   <section class="visual">
+    <!-- 国风背景图（登录 / 注册 / 后台登录共用） -->
+    <PageBackdrop :src="backdrop" />
+
     <!-- 流光粒子 -->
     <div class="embers">
       <i v-for="(e, i) in embers" :key="i" :style="e"></i>
@@ -27,6 +30,10 @@
 </template>
 
 <script setup>
+import PageBackdrop from './PageBackdrop.vue'
+import { pageImages } from '../utils/images'
+
+const backdrop = pageImages.auth
 const colors = ['#2dd4bf', '#e9c46a', '#ef4454', '#5eead4', '#ffffff']
 
 // 复用原网页的粒子逻辑，用响应式数组渲染

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS board_game_log (
   active_plane  INT            NOT NULL DEFAULT 0              COMMENT '当前选中飞机编号',
   extra_roll    TINYINT(1)     NOT NULL DEFAULT 0              COMMENT '掷6再掷标记',
   rolls         INT            NOT NULL DEFAULT 0              COMMENT '已掷骰次数',
-  dice_log      VARCHAR(255)   DEFAULT NULL                    COMMENT '掷骰轨迹，如 3,6,2,5',
+  dice_log      TEXT           DEFAULT NULL                    COMMENT '掷骰轨迹，如 0:6→0,1:3→3；用 TEXT 避免长局溢出卡死',
   gain_copper   INT            NOT NULL DEFAULT 0              COMMENT '本局累计获得铜币（落格+通关，不含报名费扣减）',
   gain_power    INT            NOT NULL DEFAULT 0              COMMENT '本局累计获得神尊力（落格+通关）',
   pass          TINYINT(1)     NOT NULL DEFAULT 0              COMMENT '是否通关登顶：1=通关 0=未通关',

@@ -1,5 +1,8 @@
 <template>
   <div class="forum" ref="root">
+    <!-- 国风背景图 -->
+    <PageBackdrop :src="backdrop" />
+
     <div class="embers"><i v-for="(e, i) in embers" :key="i" :style="e"></i></div>
 
     <!-- ===== 顶部栏 ===== -->
@@ -240,7 +243,10 @@ import {
   fetchForumPosts, fetchForumPost, fetchForumStats, createForumPost,
   createForumReply, toggleForumLike, deleteForumPost
 } from '../api'
+import PageBackdrop from '../components/PageBackdrop.vue'
+import { pageImages } from '../utils/images'
 
+const backdrop = pageImages.forum
 const props = defineProps({ avatar: { type: Object, default: null } })
 const emit = defineEmits(['go-home'])
 
@@ -426,7 +432,7 @@ onMounted(reload)
 </script>
 
 <style scoped>
-.forum{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;
+.forum{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;isolation:isolate;
   background:radial-gradient(120% 80% at 80% 0%,rgba(45,212,191,.10),transparent 55%),
     radial-gradient(100% 90% at 10% 100%,rgba(233,196,106,.08),transparent 55%),
     linear-gradient(180deg,var(--ink2),var(--ink) 70%);color:var(--text)}

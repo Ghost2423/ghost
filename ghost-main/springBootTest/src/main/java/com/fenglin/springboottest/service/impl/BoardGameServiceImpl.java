@@ -445,6 +445,13 @@ public class BoardGameServiceImpl implements BoardGameService {
 
         String diceLog = (g.getDiceLog() == null ? "" : g.getDiceLog())
                 + plane + ":" + dice + "→" + fm.to + ",";
+        // 防御：单局最多 60 次掷骰，日志本身只用于追溯。限制长度避免旧库 varchar(255) 列溢出导致
+        // UPDATE 失败、整局卡死；保留最近记录（从最后一个完整条目起），既省空间又不影响玩法。
+        if (diceLog.length() > 4000) {
+            int cut = diceLog.length() - 4000;
+            int comma = diceLog.indexOf(',', cut);
+            diceLog = comma >= 0 ? diceLog.substring(comma + 1) : diceLog.substring(cut);
+        }
         g.setPlaneStates(BoardGameRules.formatPlanes(planes));
         g.setGuards(formatGuards(guards));
         g.setActivePlane(plane);

@@ -1,5 +1,8 @@
 <template>
   <div class="adm">
+    <!-- 国风背景图 -->
+    <PageBackdrop :src="backdrop" />
+
     <!-- ===== 侧边栏 ===== -->
     <aside class="adm-side">
       <div class="adm-brand">
@@ -60,7 +63,10 @@ import CultivationTab from './admin/CultivationTab.vue'
 import RegisterTab from './admin/RegisterTab.vue'
 import LogTab from './admin/LogTab.vue'
 import ForumTab from './admin/ForumTab.vue'
+import PageBackdrop from '../components/PageBackdrop.vue'
+import { pageImages } from '../utils/images'
 
+const backdrop = pageImages.admin
 const props = defineProps({
   // 管理员实体（来自 /api/admin/login，permission=0）
   admin: { type: Object, required: true }

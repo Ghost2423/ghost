@@ -6,6 +6,7 @@
 .adm {
   position: fixed;
   inset: 0;
+  isolation: isolate;
   display: flex;
   background:
     radial-gradient(120% 70% at 85% 0%, rgba(233, 196, 106, .10), transparent 55%),

@@ -1,5 +1,8 @@
 <template>
   <div class="boardgame" ref="root">
+    <!-- 国风背景图 -->
+    <PageBackdrop :src="backdrop" />
+
     <!-- 水墨 drifting 墨点 -->
     <div class="ink-drift"><i v-for="(e, i) in motes" :key="i" :style="e"></i></div>
 
@@ -327,7 +330,10 @@ import {
   fetchBoardGame, startBoardGame, rollBoardGame, fetchBoardGameRank,
   fetchBoardItems, useBoardItem, fetchPvpStatus, fetchPvpList, createPvp, acceptPvp, rollPvp
 } from '../api'
+import PageBackdrop from '../components/PageBackdrop.vue'
+import { pageImages } from '../utils/images'
 
+const backdrop = pageImages.boardgame
 const props = defineProps({ avatar: { type: Object, default: null } })
 defineEmits(['go-home'])
 
@@ -579,7 +585,7 @@ function toast(msg) {
 
 <style scoped>
 /* ========== 水墨风基调 ========== */
-.boardgame{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;
+.boardgame{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;isolation:isolate;
   background:
     radial-gradient(90% 60% at 12% 4%,rgba(45,212,191,.10),transparent 60%),
     radial-gradient(80% 70% at 92% 96%,rgba(45,212,191,.07),transparent 60%),

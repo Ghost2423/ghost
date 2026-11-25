@@ -1,5 +1,8 @@
 <template>
   <div class="cultivation" ref="root">
+    <!-- 国风背景图 -->
+    <PageBackdrop :src="backdrop" />
+
     <!-- 氛围：流光粒子 -->
     <div class="embers">
       <i v-for="(e, i) in embers" :key="i" :style="e"></i>
@@ -219,7 +222,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { fetchCultivation, secretTraining, sparWith, buyGongfa, breakthroughRealm, dailyCheckIn } from '../api'
+import PageBackdrop from '../components/PageBackdrop.vue'
+import { pageImages } from '../utils/images'
 
+const backdrop = pageImages.cultivation
 const props = defineProps({ avatar: { type: Object, default: null } })
 defineEmits(['go-home'])
 
@@ -370,7 +376,7 @@ function toast(msg) {
 </script>
 
 <style scoped>
-.cultivation{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;
+.cultivation{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;isolation:isolate;
   background:
     radial-gradient(120% 80% at 80% 0%,rgba(45,212,191,.10),transparent 55%),
     radial-gradient(100% 90% at 10% 100%,rgba(239,68,84,.10),transparent 55%),

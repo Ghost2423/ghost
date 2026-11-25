@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS user_register_record (
   COMMENT='沧元界·每次注册的账号留痕';
 
 -- 历史数据回填：把建表前已存在的账号补成注册记录（重复执行不会重复插入）
+-- 双重去重：既按 avatar_id 也按 account，避免历史记录缺 avatar_id 时重复补录
 INSERT INTO user_register_record
   (avatar_id, account, password, region, myth_name, myth_story, agreed, permission, register_ip, source, created_at)
 SELECT a.id, a.deity_name, a.spell, a.region, a.myth_name, a.myth_story,
@@ -42,6 +43,9 @@ SELECT a.id, a.deity_name, a.spell, a.region, a.myth_name, a.myth_story,
 FROM avatar_foundation a
 WHERE NOT EXISTS (
   SELECT 1 FROM user_register_record r WHERE r.avatar_id = a.id
+)
+  AND NOT EXISTS (
+  SELECT 1 FROM user_register_record r WHERE r.account = a.deity_name
 );
 
 -- 校验：当前累计注册账号数

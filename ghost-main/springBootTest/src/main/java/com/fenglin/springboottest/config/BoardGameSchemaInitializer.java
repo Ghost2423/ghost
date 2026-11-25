@@ -32,6 +32,9 @@ public class BoardGameSchemaInitializer {
                     "INT NOT NULL DEFAULT 0 COMMENT '当前选中飞机编号'");
             addColumn("board_game_log", "extra_roll",
                     "TINYINT(1) NOT NULL DEFAULT 0 COMMENT '掷6再掷标记'");
+            // 旧库的 dice_log 是 VARCHAR(255)，长局掷骰轨迹累积超限会导致 UPDATE 失败、
+            // 对局卡死。启动时自动升级为 TEXT（幂等：已是 TEXT 则跳过）。
+            widenToText("board_game_log", "dice_log");
 
             addColumn("board_pvp_match", "challenger_planes",
                     "VARCHAR(64) NOT NULL DEFAULT '-1,-1,-1,-1' COMMENT '挑战者4架飞机位置'");
@@ -45,6 +48,24 @@ public class BoardGameSchemaInitializer {
                     "TINYINT(1) NOT NULL DEFAULT 0 COMMENT '掷6再掷标记'");
         } catch (Exception e) {
             log.warn("飞行棋字段自举失败（可手动执行 sql/boardgame-flightchess.sql）：{}", e.getMessage());
+        }
+    }
+
+    /** 将已有列扩为 TEXT（仅当当前不是 text 类型时执行），幂等可重复启动。 */
+    private void widenToText(String table, String column) {
+        try {
+            String type = jdbcTemplate.queryForObject(
+                    "SELECT DATA_TYPE FROM information_schema.COLUMNS " +
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                    String.class, table, column);
+            if (type != null && !"text".equalsIgnoreCase(type) && !"longtext".equalsIgnoreCase(type)
+                    && !"mediumtext".equalsIgnoreCase(type)) {
+                jdbcTemplate.execute("ALTER TABLE " + table + " MODIFY COLUMN " + column
+                        + " TEXT NULL COMMENT '掷骰轨迹，如 0:6→0,1:3→3'");
+                log.info("飞行棋字段自举：{} 列 {} 已扩为 TEXT（原 {}）", table, column, type);
+            }
+        } catch (Exception e) {
+            log.warn("飞行棋字段扩列失败 {}.{}: {}", table, column, e.getMessage());
         }
     }
 

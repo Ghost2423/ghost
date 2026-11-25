@@ -227,29 +227,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { searchCangyuan, fetchCodex, fetchHomeConfig, fetchCultivation, viewCard, fetchViewedCards, dailyCheckIn } from '../api'
-
-/* ===== 国风水墨配图：按 codex_{id} 自动映射本地静态图 ===== */
-// Vite 用 import.meta.glob 收集 assets/images 下所有 png，建立「文件名(无扩展) → URL」映射。
-// 后端条目若带 image 字段则优先用后台自定义路径，否则按 codex_{id} 取内置水墨图。
-const imageModules = import.meta.glob('../assets/images/*.webp', { eager: true, import: 'default' })
-const imageMap = {}
-for (const [path, url] of Object.entries(imageModules)) {
-  const name = path.split('/').pop().replace(/\.webp$/, '')
-  imageMap[name] = url
-}
-// 展示框按分类取图
-const sectionImage = {
-  '神尊': imageMap['sec-deity'], '功法': imageMap['sec-gongfa'],
-  '妖魔': imageMap['sec-demon'], '秘境': imageMap['sec-realm']
-}
-const heroImage = imageMap['hero']
-function itemImage(it) {
-  if (!it) return ''
-  if (it.image) return it.image                  // 后台自定义优先
-  if (it.id != null && imageMap['codex_' + it.id]) return imageMap['codex_' + it.id]
-  // 本地兜底条目：按类型取分类图
-  return sectionImage[it.type] || ''
-}
+import { heroImage, sectionImage, itemImage } from '../utils/images'
 
 const props = defineProps({ avatar: { type: Object, default: null } })
 const emit = defineEmits(['logout', 'open-admin', 'open-cultivation', 'open-boardgame', 'open-forum'])

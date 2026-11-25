@@ -22,6 +22,12 @@ CREATE TABLE IF NOT EXISTS cy_codex (
   title       VARCHAR(64)    DEFAULT ''                        COMMENT '称号/标签（如「主角·刀道」「火妖」）',
   description VARCHAR(512)   DEFAULT ''                        COMMENT '简介',
   flavor      VARCHAR(255)   DEFAULT ''                        COMMENT '设定台词',
+  color       VARCHAR(16)    NOT NULL DEFAULT '#e9c46a'        COMMENT '卡片主色',
+  image       VARCHAR(255)   DEFAULT NULL                      COMMENT '卡片配图路径（前端静态资源）',
+  sort_no     INT            NOT NULL DEFAULT 0                 COMMENT '排序（越小越前）',
+  status      TINYINT        NOT NULL DEFAULT 1                 COMMENT '状态：1=上架 0=下架',
+  price       INT            NOT NULL DEFAULT 100               COMMENT '功法售价（铜币）',
+  power_gain  INT            NOT NULL DEFAULT 40                COMMENT '购得功法获得的神尊力',
   created_at  DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '录入时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_cat_name (category, name),   -- 同分类下名号唯一

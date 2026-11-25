@@ -56,6 +56,7 @@ rem ================= 3. 初始化数据库 =================
 echo [3/6] 初始化数据库 cangyuan（幂等，可重复执行）...
 if not exist "%MYSQL_BIN%" set "MYSQL_BIN=mysql.exe"
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\cangyuan.sql" >nul 2>nul
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\upgrade_codex_image.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\cultivation.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\admin_home.sql" >nul 2>nul
 "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "%BE%\sql\register_account.sql" >nul 2>nul

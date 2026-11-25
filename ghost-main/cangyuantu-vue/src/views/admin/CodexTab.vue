@@ -51,6 +51,7 @@
             <th style="width:52px">ID</th>
             <th style="width:96px">分类</th>
             <th style="width:150px">名号</th>
+            <th style="width:72px">配图</th>
             <th style="width:130px">称号 / 标签</th>
             <th>简介</th>
             <th style="width:76px">售价</th>
@@ -61,9 +62,9 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading && !items.length"><td colspan="11" class="adm-empty">正在读取图鉴数据…</td></tr>
+          <tr v-if="loading && !items.length"><td colspan="12" class="adm-empty">正在读取图鉴数据…</td></tr>
           <tr v-else-if="!items.length">
-            <td colspan="11" class="adm-empty">
+            <td colspan="12" class="adm-empty">
               {{ hasFilter ? '当前筛选条件下没有条目，试试切换分类或清空搜索' : '暂无条目，点击「新增条目」开始录入' }}
             </td>
           </tr>
@@ -78,6 +79,10 @@
             </td>
             <td class="strong">
               <span class="adm-dot" :style="{ background: it.color, color: it.color }"></span>{{ it.name }}
+            </td>
+            <td>
+              <img v-if="itemImage(it)" class="codex-thumb" :src="itemImage(it)" :alt="it.name + '配图'" />
+              <span v-else class="muted">—</span>
             </td>
             <td class="muted">{{ it.title || '—' }}</td>
             <td class="desc-cell" :title="it.description">{{ it.description || '—' }}</td>
@@ -154,7 +159,11 @@
             </div>
             <div class="adm-field" style="grid-column:1/-1">
               <label>配图路径（可选，留空则按 codex_{id} 自动用内置水墨图）</label>
-              <input v-model="form.image" class="adm-input" placeholder="留空自动配图，或填 /src/assets/images/xxx.webp" maxlength="255" />
+              <input v-model="form.image" class="adm-input" placeholder="留空自动配图，或填图片文件名，如 codex_1.webp" maxlength="255" />
+              <div class="image-preview">
+                <img v-if="previewImage" :src="previewImage" alt="配图预览" />
+                <span v-else>未找到配图，将使用分类内置图</span>
+              </div>
             </div>
           </div>
 
@@ -222,6 +231,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import {
   fetchAdminCodex, saveAdminCodex, toggleAdminCodex, deleteAdminCodex, batchAdminCodexStatus
 } from '../../api'
+import { itemImage } from '../../utils/images'
 
 const props = defineProps({ cred: { type: Object, required: true } })
 const emit = defineEmits(['toast'])
@@ -241,6 +251,7 @@ const pages = ref(0)
 const loading = ref(false)
 const busy = ref(false)
 const form = ref(null)
+const previewImage = computed(() => itemImage(form.value))
 const pending = ref(null)
 const selected = ref([])              // 跨页保留的选中 id
 
@@ -440,4 +451,15 @@ onMounted(() => load(1))
   background: rgba(7, 11, 22, .6); cursor: pointer;
 }
 .adm-tb-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.codex-thumb {
+  width: 56px; height: 42px; object-fit: cover; display: block;
+  border-radius: 7px; border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(7, 11, 22, .6);
+}
+.image-preview {
+  margin-top: 8px; height: 88px; border-radius: 8px; overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .14); background: rgba(7, 11, 22, .6);
+  display: grid; place-items: center; color: #8b9ab8; font-size: 12px;
+}
+.image-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 </style>
