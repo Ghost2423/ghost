@@ -5,6 +5,7 @@ import com.fenglin.springboottest.dto.ForgeRequest;
 import com.fenglin.springboottest.dto.LoginRequest;
 import com.fenglin.springboottest.entity.AvatarFoundation;
 import com.fenglin.springboottest.service.AvatarFoundationService;
+import com.fenglin.springboottest.service.CultivationService;
 import com.fenglin.springboottest.service.RegisterRecordService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,9 @@ public class AvatarController {
 
     @Autowired
     private RegisterRecordService registerRecordService;
+
+    @Autowired
+    private CultivationService cultivationService;
 
     /** 锻造神尊根基（注册）：同一事务写入 avatar_foundation + user_register_record */
     @PostMapping("/forge")
@@ -116,6 +120,9 @@ public class AvatarController {
         if (!spell.equals(af.getSpell())) {
             return ResponseEntity.status(401).body(ApiResult.fail("召唤语不符，神尊未应"));
         }
+        // 登录即幂等补齐修炼根基：历史账号缺行时自动建初始根基；已有进度一个字段都不动，
+        // 保证每次登录都能看到自己保存的修炼进度，不会被重置。
+        cultivationService.ensureInitialized(af.getId());
         return ResponseEntity.ok(ApiResult.ok("avatar", af));
     }
 

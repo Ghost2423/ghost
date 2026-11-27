@@ -59,14 +59,18 @@ public class CultivationServiceImpl implements CultivationService {
 
     /* ================= 内部工具 ================= */
 
-    /** 取用户修炼状态；无则按默认值（筑基 / 0 神尊力 / 200 铜币）惰性初始化 */
-    private UserCultivation getOrInit(Long userId) {
-        UserCultivation uc = cultivationMapper.selectOne(
+    /**
+     * 幂等确保账号已有修炼根基（注册/登录时调用）。
+     * 【绝不重置】：已有行直接返回，不改写境界/神尊力/铜币/称号/秘境次数；
+     * 仅当该账号从未初始化时才写入默认根基（筑基 / 0 神尊力 / 200 铜币）。
+     */
+    @Override
+    public void ensureInitialized(Long userId) {
+        if (userId == null) return;
+        UserCultivation exists = cultivationMapper.selectOne(
                 new QueryWrapper<UserCultivation>().eq("user_id", userId));
-        if (uc != null) {
-            return uc;
-        }
-        uc = new UserCultivation();
+        if (exists != null) return; // 已有进度：一个字段都不动
+        UserCultivation uc = new UserCultivation();
         uc.setUserId(userId);
         uc.setRealm("筑基");
         uc.setPower(0);
@@ -75,10 +79,25 @@ public class CultivationServiceImpl implements CultivationService {
         try {
             cultivationMapper.insert(uc);
         } catch (org.springframework.dao.DuplicateKeyException e) {
-            // 并发初始化撞唯一键：取已存在行
-            uc = cultivationMapper.selectOne(
-                    new QueryWrapper<UserCultivation>().eq("user_id", userId));
+            // 并发初始化撞唯一键：已有行即为正确状态，忽略
         }
+    }
+
+    /** 取用户修炼状态；无则按默认值（筑基 / 0 神尊力 / 200 铜币）惰性初始化 */
+    private UserCultivation getOrInit(Long userId) {
+        ensureInitialized(userId);
+        UserCultivation uc = cultivationMapper.selectOne(
+                new QueryWrapper<UserCultivation>().eq("user_id", userId));
+        if (uc != null) {
+            return uc;
+        }
+        // 兜底：极端并发下 insert 未可见，构造内存对象供本次调用使用
+        uc = new UserCultivation();
+        uc.setUserId(userId);
+        uc.setRealm("筑基");
+        uc.setPower(0);
+        uc.setCopper(CultivationRules.INIT_COPPER);
+        uc.setSecretCount(0);
         return uc;
     }
 

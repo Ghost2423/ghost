@@ -18,6 +18,13 @@ import java.util.Map;
  */
 public interface CultivationService {
 
+    /**
+     * 幂等确保账号已有修炼根基：已存在则绝不改动（完整保留玩家进度），
+     * 不存在才写入初始值（筑基 / 0 神尊力 / 200 铜币）。
+     * 注册与登录时各调用一次，避免新账号或历史账号缺失修炼数据而出现「进度被重置 / 看不到」。
+     */
+    void ensureInitialized(Long userId);
+
     /** 修炼状态总览 */
     Map<String, Object> status(AvatarFoundation af);
 
